@@ -1,6 +1,7 @@
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import AdminLayoutClient from './layout-client';
+import { CourseEditProvider } from '@/lib/course-edit-context';
 
 export default async function BackofficeLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -14,17 +15,19 @@ export default async function BackofficeLayout({ children }: { children: React.R
   }
 
   return (
-    <AdminLayoutClient
-      user={{
-        id: user.id,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        email: user.email,
-        roles: user.roles,
-        avatar_url: user.avatar_url,
-      }}
-    >
-      {children}
-    </AdminLayoutClient>
+    <CourseEditProvider>
+      <AdminLayoutClient
+        user={{
+          id: user.id,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          email: user.email,
+          roles: user.roles,
+          avatar_url: user.avatar_url,
+        }}
+      >
+        {children}
+      </AdminLayoutClient>
+    </CourseEditProvider>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -23,7 +23,8 @@ interface Props {
 
 export default function QuizBuilderClient({ courseId, quiz, questions: existingQuestions }: Props) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [quizTitle, setQuizTitle] = useState(quiz?.title || 'New Quiz');
   const [quizDescription, setQuizDescription] = useState(quiz?.description || '');
@@ -137,8 +138,10 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
     }
   };
 
-  const handleSave = () => {
-    startTransition(async () => {
+  const handleSave = async () => {
+    setSaveError(null);
+    setSaving(true);
+    try {
       let quizId = quiz?.id;
 
       if (!quizId) {
@@ -168,7 +171,10 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
 
       router.push(`/admin/courses/${courseId}`);
       router.refresh();
-    });
+    } catch (err: any) {
+      setSaveError(err?.message || 'Failed to save quiz');
+      setSaving(false);
+    }
   };
 
   /** Generate quiz questions using AI */
@@ -237,6 +243,11 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
 
   return (
     <div>
+      {saveError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-2">
+          <span>{saveError}</span>
+        </div>
+      )}
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -265,9 +276,9 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
             <Bot className="w-4 h-4" />
             Generate with AI
           </Button>
-          <Button onClick={handleSave} disabled={isPending}>
-            <Sparkles className="w-4 h-4" />
-            {isPending ? 'Saving...' : 'Save Quiz'}
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            {saving ? 'Saving...' : 'Save Quiz'}
           </Button>
         </div>
       </motion.div>

@@ -201,6 +201,7 @@ export async function createQuiz(courseId: string, data: {
       data.points_third_attempt || 5, data.points_fourth_plus_attempt || 2,
     ]
   );
+  revalidatePath(`/admin/courses/${courseId}`);
   return quiz;
 }
 
@@ -224,6 +225,11 @@ export async function saveQuizQuestions(quizId: string, questions: {
        VALUES ($1, $2, $3, $4, $5, 1)`,
       [quizId, q.question_text, JSON.stringify(q.options), q.correct_answer_ids, q.sequence_order]
     );
+  }
+
+  const course = await queryOne<{ course_id: string }>(`SELECT course_id FROM quizzes WHERE id = $1`, [quizId]);
+  if (course?.course_id) {
+    revalidatePath(`/admin/courses/${course.course_id}`);
   }
 }
 

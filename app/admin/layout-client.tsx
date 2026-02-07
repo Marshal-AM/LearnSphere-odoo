@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useState, useEffect, useCallback } from 'react';
 import {
   BookOpen, BarChart3, LogOut, Bell,
@@ -39,6 +39,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useCourseEditLeaveCheck } from '@/lib/course-edit-context';
 
 interface AdminUser {
   id: string;
@@ -51,7 +52,18 @@ interface AdminUser {
 
 export default function AdminLayoutClient({ children, user }: { children: ReactNode; user: AdminUser }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const leaveCheck = useCourseEditLeaveCheck();
   const isInstructor = user.roles.includes('instructor') || user.roles.includes('admin');
+
+  const isOnCourseEditPage = /^\/admin\/courses\/[^/]+$/.test(pathname);
+  const handleCoursesNav = async (e: React.MouseEvent, href: string) => {
+    if (href === '/admin/courses' && isOnCourseEditPage && leaveCheck) {
+      e.preventDefault();
+      const ok = await leaveCheck.runLeaveCheck();
+      if (ok) router.push('/admin/courses');
+    }
+  };
 
   // Instructor online status
   const [isOnline, setIsOnline] = useState(false);
@@ -133,6 +145,7 @@ export default function AdminLayoutClient({ children, user }: { children: ReactN
               <SidebarMenu>
                 {navigation.map(item => {
                   const isActive = pathname.startsWith(item.href);
+                  const isCoursesLink = item.href === '/admin/courses';
                   return (
                     <SidebarMenuItem key={item.name}>
                       <SidebarMenuButton
@@ -145,7 +158,7 @@ export default function AdminLayoutClient({ children, user }: { children: ReactN
                           isActive && 'bg-primary/15 text-white font-semibold shadow-sm'
                         )}
                       >
-                        <Link href={item.href}>
+                        <Link href={item.href} onClick={(e) => handleCoursesNav(e, item.href)}>
                           <div className={cn(
                             'relative flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200',
                             isActive

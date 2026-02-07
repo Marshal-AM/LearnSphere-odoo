@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useCourseEditLeaveCheck } from '@/lib/course-edit-context';
 import {
   ArrowLeft, Eye, UserPlus, Mail, Upload, Video, FileText,
   Image as ImageIcon, HelpCircle, MoreVertical, Edit, Trash2, Plus,
@@ -50,8 +51,53 @@ interface Props {
   isAdmin?: boolean;
 }
 
+const DRAFT_KEY = (id: string) => `learnsphere-course-draft-${id}`;
+const RETURN_FROM_QUIZ_KEY = 'learnsphere-return-from-quiz-builder';
+
+type CourseDraft = {
+  isPublished: boolean;
+  title: string;
+  courseTagsState: string[];
+  websiteUrl: string;
+  adminId: string;
+  description: string;
+  visibility: CourseVisibility;
+  accessRule: CourseAccessRule;
+  price: string;
+  coverImageUrl: string;
+};
+
+function getDraft(courseId: string): CourseDraft | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY(courseId));
+    const fromQuiz = sessionStorage.getItem(RETURN_FROM_QUIZ_KEY);
+    if (!raw || fromQuiz !== courseId) return null;
+    return JSON.parse(raw) as CourseDraft;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(courseId: string, draft: CourseDraft) {
+  try {
+    sessionStorage.setItem(DRAFT_KEY(courseId), JSON.stringify(draft));
+    sessionStorage.setItem(RETURN_FROM_QUIZ_KEY, courseId);
+  } catch {}
+}
+
+function clearDraft(courseId: string) {
+  try {
+    sessionStorage.removeItem(DRAFT_KEY(courseId));
+    if (sessionStorage.getItem(RETURN_FROM_QUIZ_KEY) === courseId) {
+      sessionStorage.removeItem(RETURN_FROM_QUIZ_KEY);
+    }
+  } catch {}
+}
+
 export default function CourseFormClient({ course, lessons: initialLessons, quizzes: initialQuizzes, instructors, tags: allTags, isAdmin = false }: Props) {
   const router = useRouter();
+  const leaveCheckCtx = useCourseEditLeaveCheck();
   const [isPending, startTransition] = useTransition();
 
   const [isPublished, setIsPublished] = useState(course.status === 'published');
@@ -64,6 +110,95 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
   const [accessRule, setAccessRule] = useState<CourseAccessRule>(course.access_rule);
   const [price, setPrice] = useState(course.price?.toString() || '');
   const [coverImageUrl, setCoverImageUrl] = useState(course.cover_image_url || '');
+
+  const savedSnapshotRef = useRef<CourseDraft | null>(null);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  const leaveResolveRef = useRef<((ok: boolean) => void) | null>(null);
+
+  useEffect(() => {
+    const draft = getDraft(course.id);
+    if (draft) {
+      setIsPublished(draft.isPublished);
+      setTitle(draft.title);
+      setCourseTags(draft.courseTagsState);
+      setWebsiteUrl(draft.websiteUrl);
+      setAdminId(draft.adminId);
+      setDescription(draft.description);
+      setVisibility(draft.visibility);
+      setAccessRule(draft.accessRule);
+      setPrice(draft.price);
+      setCoverImageUrl(draft.coverImageUrl);
+      savedSnapshotRef.current = draft;
+      sessionStorage.removeItem(RETURN_FROM_QUIZ_KEY);
+    } else {
+      const server: CourseDraft = {
+        isPublished: course.status === 'published',
+        title: course.title,
+        courseTagsState: course.tags || [],
+        websiteUrl: course.website_url || '',
+        adminId: course.course_admin_id || '',
+        description: course.full_description || '',
+        visibility: course.visibility,
+        accessRule: course.access_rule,
+        price: course.price?.toString() || '',
+        coverImageUrl: course.cover_image_url || '',
+      };
+      savedSnapshotRef.current = server;
+      sessionStorage.removeItem(DRAFT_KEY(course.id));
+    }
+  }, [course.id]);
+
+  const currentDraft = (): CourseDraft => ({
+    isPublished,
+    title,
+    courseTagsState,
+    websiteUrl,
+    adminId,
+    description,
+    visibility,
+    accessRule,
+    price,
+    coverImageUrl,
+  });
+
+  const hasUnsavedChanges = useCallback(() => {
+    const snap = savedSnapshotRef.current;
+    if (!snap) return false;
+    const cur = currentDraft();
+    return (
+      snap.isPublished !== cur.isPublished ||
+      snap.title !== cur.title ||
+      JSON.stringify(snap.courseTagsState) !== JSON.stringify(cur.courseTagsState) ||
+      snap.websiteUrl !== cur.websiteUrl ||
+      snap.adminId !== cur.adminId ||
+      snap.description !== cur.description ||
+      snap.visibility !== cur.visibility ||
+      snap.accessRule !== cur.accessRule ||
+      snap.price !== cur.price ||
+      snap.coverImageUrl !== cur.coverImageUrl
+    );
+  }, [isPublished, title, courseTagsState, websiteUrl, adminId, description, visibility, accessRule, price, coverImageUrl]);
+
+  const runLeaveCheck = useCallback((): Promise<boolean> => {
+    if (!hasUnsavedChanges()) return Promise.resolve(true);
+    return new Promise((resolve) => {
+      leaveResolveRef.current = resolve;
+      setLeaveConfirmOpen(true);
+    });
+  }, [hasUnsavedChanges]);
+
+  useEffect(() => {
+    leaveCheckCtx?.setLeaveCheck(runLeaveCheck);
+    return () => leaveCheckCtx?.setLeaveCheck(null);
+  }, [leaveCheckCtx, runLeaveCheck]);
+
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges()) e.preventDefault();
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   // Lesson editor
   const [lessonModalOpen, setLessonModalOpen] = useState(false);
@@ -138,11 +273,35 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
           data.course_admin_id = adminId || null;
         }
         await updateCourse(course.id, data);
+        savedSnapshotRef.current = currentDraft();
+        clearDraft(course.id);
         router.push('/admin/courses');
       } catch (err: any) {
         setCourseErrors({ _global: err?.message || 'Failed to save course.' });
       }
     });
+  };
+
+  const goToQuizBuilder = (path: string) => {
+    saveDraft(course.id, currentDraft());
+    router.push(path);
+  };
+
+  const handleBackClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    runLeaveCheck().then((ok) => {
+      if (ok) {
+        clearDraft(course.id);
+        router.push('/admin/courses');
+      }
+    });
+  };
+
+  const handleLeaveConfirm = (leave: boolean) => {
+    leaveResolveRef.current?.(leave);
+    leaveResolveRef.current = null;
+    setLeaveConfirmOpen(false);
+    if (leave) clearDraft(course.id);
   };
 
   const openLessonEditor = (lessonId?: string) => {
@@ -346,12 +505,10 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
     <div>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-gray-700">Quizzes ({initialQuizzes.length})</h3>
-        <Link href={`/admin/courses/${course.id}/quiz-builder/new`}>
-          <Button size="sm">
-            <Plus className="w-4 h-4" />
-            Add Quiz
-          </Button>
-        </Link>
+        <Button size="sm" onClick={() => goToQuizBuilder(`/admin/courses/${course.id}/quiz-builder/new`)}>
+          <Plus className="w-4 h-4" />
+          Add Quiz
+        </Button>
       </div>
       <div className="space-y-2">
         {initialQuizzes.map(quiz => (
@@ -380,7 +537,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
             >
               <DropdownItem
                 icon={<Edit className="w-4 h-4" />}
-                onClick={() => router.push(`/admin/courses/${course.id}/quiz-builder/${quiz.id}`)}
+                onClick={() => goToQuizBuilder(`/admin/courses/${course.id}/quiz-builder/${quiz.id}`)}
               >
                 Edit
               </DropdownItem>
@@ -423,12 +580,13 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
 
       {/* ─── Header ─── */}
       <div className="flex items-center gap-3 mb-6">
-        <Link
+        <a
           href="/admin/courses"
-          className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+          onClick={handleBackClick}
+          className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-5 h-5" />
-        </Link>
+        </a>
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold text-gray-900 truncate">{title || 'New Course'}</h1>
         </div>
@@ -1080,6 +1238,17 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
         title={`Delete ${deleteConfirm.type}?`}
         message={`Are you sure you want to delete "${deleteConfirm.name}"? This action cannot be undone.`}
         confirmLabel="Delete"
+        danger
+      />
+
+      {/* Leave course – unsaved changes */}
+      <ConfirmDialog
+        isOpen={leaveConfirmOpen}
+        onClose={() => handleLeaveConfirm(false)}
+        onConfirm={() => handleLeaveConfirm(true)}
+        title="Leave course?"
+        message="You have unsaved changes. If you leave now, your progress will be lost. Are you sure?"
+        confirmLabel="Leave"
         danger
       />
     </div>
