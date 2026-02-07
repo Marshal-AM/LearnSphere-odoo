@@ -394,6 +394,13 @@ export async function sendInvitation(courseId: string, email: string, message?: 
   const session = await getSession();
   if (!session?.user) throw new Error('Unauthorized');
 
+  // Expire any existing pending invitation for this email + course
+  await query(
+    `UPDATE course_invitations SET status = 'expired', updated_at = NOW()
+     WHERE course_id = $1 AND invited_email = $2 AND status = 'pending'`,
+    [courseId, email]
+  );
+
   const token = crypto.randomUUID();
   await query(
     `INSERT INTO course_invitations (course_id, invited_email, invited_by, invitation_message, invitation_token, expires_at)
