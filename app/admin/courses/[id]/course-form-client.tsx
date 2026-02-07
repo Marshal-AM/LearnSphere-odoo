@@ -16,6 +16,7 @@ import { Toggle } from '@/components/ui/toggle';
 import { Modal } from '@/components/ui/modal';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Dropdown, DropdownItem } from '@/components/ui/dropdown';
+import { FileUpload } from '@/components/ui/file-upload';
 import { formatDuration, formatFileSize } from '@/lib/utils';
 import {
   updateCourse, createLesson, updateLesson, deleteLesson,
@@ -43,9 +44,10 @@ interface Props {
   quizzes: Quiz[];
   instructors: Pick<User, 'id' | 'first_name' | 'last_name' | 'email' | 'roles'>[];
   tags: Tag[];
+  isAdmin?: boolean;
 }
 
-export default function CourseFormClient({ course, lessons: initialLessons, quizzes: initialQuizzes, instructors, tags: allTags }: Props) {
+export default function CourseFormClient({ course, lessons: initialLessons, quizzes: initialQuizzes, instructors, tags: allTags, isAdmin = false }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -58,14 +60,16 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
   const [visibility, setVisibility] = useState<CourseVisibility>(course.visibility);
   const [accessRule, setAccessRule] = useState<CourseAccessRule>(course.access_rule);
   const [price, setPrice] = useState(course.price?.toString() || '');
+  const [coverImageUrl, setCoverImageUrl] = useState(course.cover_image_url || '');
 
   // Lesson editor
   const [lessonModalOpen, setLessonModalOpen] = useState(false);
   const [editingLesson, setEditingLesson] = useState<string | null>(null);
   const [lessonForm, setLessonForm] = useState({
     title: '', type: 'video' as LessonType, responsible: '',
-    videoUrl: '', videoDuration: '', documentUrl: '', allowDownload: true,
-    imageUrl: '', description: '', attachments: [] as { title: string; type: 'file' | 'link'; url: string }[],
+    videoUrl: '', videoDuration: '', documentUrl: '', documentFilename: '', documentSize: 0,
+    allowDownload: true, imageUrl: '', imageFilename: '',
+    description: '', attachments: [] as { title: string; type: 'file' | 'link'; url: string }[],
   });
 
   // Delete confirmation
@@ -82,19 +86,27 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
   const [contactSubject, setContactSubject] = useState('');
   const [contactMessage, setContactMessage] = useState('');
 
+  // Cover image upload
+  const [coverUploadOpen, setCoverUploadOpen] = useState(false);
+
   const handleSave = () => {
     startTransition(async () => {
-      await updateCourse(course.id, {
+      const data: Record<string, any> = {
         title,
         full_description: description,
         visibility,
         access_rule: accessRule,
         price: accessRule === 'on_payment' ? parseFloat(price) || null : null,
         website_url: websiteUrl || undefined,
-        course_admin_id: adminId || null,
         tags: courseTagsState,
         status: isPublished ? 'published' : 'draft',
-      });
+        cover_image_url: coverImageUrl || undefined,
+      };
+      // Only admin can change the course admin
+      if (isAdmin) {
+        data.course_admin_id = adminId || null;
+      }
+      await updateCourse(course.id, data);
       router.refresh();
     });
   };
@@ -111,8 +123,11 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
           videoUrl: lesson.video_url || '',
           videoDuration: lesson.video_duration_minutes?.toString() || '',
           documentUrl: lesson.document_url || '',
+          documentFilename: lesson.document_filename || '',
+          documentSize: lesson.document_size_bytes || 0,
           allowDownload: lesson.document_allow_download,
           imageUrl: lesson.image_url || '',
+          imageFilename: lesson.image_filename || '',
           description: lesson.description || '',
           attachments: [],
         });
@@ -121,8 +136,9 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
       setEditingLesson(null);
       setLessonForm({
         title: '', type: 'video', responsible: '',
-        videoUrl: '', videoDuration: '', documentUrl: '', allowDownload: true,
-        imageUrl: '', description: '', attachments: [],
+        videoUrl: '', videoDuration: '', documentUrl: '', documentFilename: '', documentSize: 0,
+        allowDownload: true, imageUrl: '', imageFilename: '',
+        description: '', attachments: [],
       });
     }
     setLessonModalOpen(true);
@@ -136,9 +152,12 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
           lesson_type: lessonForm.type,
           responsible_user_id: lessonForm.responsible || null,
           video_url: lessonForm.videoUrl || null,
-          video_duration_minutes: lessonForm.videoDuration ? parseInt(lessonForm.videoDuration) : null,
+          video_duration_minutes: lessonForm.videoDuration ? parseFloat(lessonForm.videoDuration) : null,
           document_url: lessonForm.documentUrl || null,
+          document_filename: lessonForm.documentFilename || null,
+          document_size_bytes: lessonForm.documentSize || null,
           image_url: lessonForm.imageUrl || null,
+          image_filename: lessonForm.imageFilename || null,
           description: lessonForm.description || null,
           document_allow_download: lessonForm.allowDownload,
           image_allow_download: lessonForm.allowDownload,
@@ -149,9 +168,12 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
           lesson_type: lessonForm.type,
           responsible_user_id: lessonForm.responsible || undefined,
           video_url: lessonForm.videoUrl || undefined,
-          video_duration_minutes: lessonForm.videoDuration ? parseInt(lessonForm.videoDuration) : undefined,
+          video_duration_minutes: lessonForm.videoDuration ? parseFloat(lessonForm.videoDuration) : undefined,
           document_url: lessonForm.documentUrl || undefined,
+          document_filename: lessonForm.documentFilename || undefined,
+          document_size_bytes: lessonForm.documentSize || undefined,
           image_url: lessonForm.imageUrl || undefined,
+          image_filename: lessonForm.imageFilename || undefined,
           description: lessonForm.description || undefined,
           document_allow_download: lessonForm.allowDownload,
           image_allow_download: lessonForm.allowDownload,
@@ -336,18 +358,21 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
         )}
       </div>
 
-      <div>
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Course Admin</h3>
-        <Select
-          label="Responsible / Course Admin"
-          value={adminId}
-          onChange={e => setAdminId((e.target as HTMLSelectElement).value)}
-          options={[
-            { value: '', label: 'Select a user...' },
-            ...instructors.map(u => ({ value: u.id, label: `${u.first_name} ${u.last_name}` })),
-          ]}
-        />
-      </div>
+      {/* Course Admin — only shown to admin users */}
+      {isAdmin && (
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Course Admin</h3>
+          <Select
+            label="Responsible / Course Admin"
+            value={adminId}
+            onChange={e => setAdminId((e.target as HTMLSelectElement).value)}
+            options={[
+              { value: '', label: 'Select a user...' },
+              ...instructors.map(u => ({ value: u.id, label: `${u.first_name} ${u.last_name}` })),
+            ]}
+          />
+        </div>
+      )}
     </div>
   );
 
@@ -454,11 +479,18 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
           <Mail className="w-4 h-4" />
           Contact Attendees
         </Button>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={() => setCoverUploadOpen(true)}>
           <Upload className="w-4 h-4" />
-          Upload Image
+          {coverImageUrl ? 'Change Cover' : 'Upload Cover'}
         </Button>
       </div>
+
+      {/* Cover image preview */}
+      {coverImageUrl && (
+        <div className="mb-6 relative rounded-xl overflow-hidden h-48 bg-gray-100">
+          <img src={coverImageUrl} alt="Course cover" className="w-full h-full object-cover" />
+        </div>
+      )}
 
       {/* Course fields */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
@@ -508,15 +540,27 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
               </select>
             </div>
           </div>
-          <Select
-            label="Responsible / Course Admin"
-            value={adminId}
-            onChange={e => setAdminId((e.target as HTMLSelectElement).value)}
-            options={[
-              { value: '', label: 'Select...' },
-              ...instructors.map(u => ({ value: u.id, label: `${u.first_name} ${u.last_name}` })),
-            ]}
-          />
+          {/* Course Admin selector — only visible to admins */}
+          {isAdmin ? (
+            <Select
+              label="Responsible / Course Admin"
+              value={adminId}
+              onChange={e => setAdminId((e.target as HTMLSelectElement).value)}
+              options={[
+                { value: '', label: 'Select...' },
+                ...instructors.map(u => ({ value: u.id, label: `${u.first_name} ${u.last_name}` })),
+              ]}
+            />
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Course Admin</label>
+              <p className="text-sm text-gray-500 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                {instructors.find(u => u.id === adminId)
+                  ? `${instructors.find(u => u.id === adminId)!.first_name} ${instructors.find(u => u.id === adminId)!.last_name}`
+                  : 'Not assigned'}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -585,30 +629,67 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                         ...instructors.map(u => ({ value: u.id, label: `${u.first_name} ${u.last_name}` })),
                       ]}
                     />
+
+                    {/* === VIDEO LESSON === */}
                     {lessonForm.type === 'video' && (
                       <div className="space-y-4 p-4 bg-blue-50 rounded-lg">
+                        <FileUpload
+                          label="Upload Video"
+                          accept="video/*"
+                          maxSize={500 * 1024 * 1024} // 500 MB
+                          folder="courses/videos"
+                          hint="MP4, WebM, MOV up to 500 MB"
+                          currentUrl={lessonForm.videoUrl.startsWith('http') && !lessonForm.videoUrl.includes('youtube') && !lessonForm.videoUrl.includes('vimeo') ? lessonForm.videoUrl : ''}
+                          currentFilename={lessonForm.videoUrl ? 'Video file' : ''}
+                          onUpload={(result) => {
+                            setLessonForm({ ...lessonForm, videoUrl: result.url });
+                          }}
+                          onDurationDetected={(minutes) => {
+                            setLessonForm(prev => ({ ...prev, videoDuration: minutes.toString() }));
+                          }}
+                        />
+                        <div className="flex items-center gap-3 text-xs text-gray-500">
+                          <div className="flex-1 h-px bg-gray-300" />
+                          <span>or paste an external URL</span>
+                          <div className="flex-1 h-px bg-gray-300" />
+                        </div>
                         <Input
-                          label="Video URL"
+                          label="Video URL (YouTube / Vimeo / Direct)"
                           value={lessonForm.videoUrl}
                           onChange={e => setLessonForm({ ...lessonForm, videoUrl: e.target.value })}
-                          placeholder="YouTube / Google Drive / Vimeo URL"
+                          placeholder="https://youtube.com/watch?v=... or direct URL"
                         />
                         <Input
                           label="Duration (minutes)"
                           type="number"
                           value={lessonForm.videoDuration}
                           onChange={e => setLessonForm({ ...lessonForm, videoDuration: e.target.value })}
-                          placeholder="30"
+                          placeholder="Auto-detected on upload, or enter manually"
+                          helperText={lessonForm.videoDuration ? `${lessonForm.videoDuration} min` : 'Will be auto-detected when uploading a video file'}
                         />
                       </div>
                     )}
+
+                    {/* === DOCUMENT LESSON === */}
                     {lessonForm.type === 'document' && (
                       <div className="space-y-4 p-4 bg-emerald-50 rounded-lg">
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                          <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
-                          <p className="text-sm text-gray-600">Click or drag to upload a document</p>
-                          <p className="text-xs text-gray-400 mt-1">PDF, DOCX, PPTX up to 100MB</p>
-                        </div>
+                        <FileUpload
+                          label="Upload Document"
+                          accept=".pdf,.doc,.docx,.pptx,.ppt,.xls,.xlsx,.txt"
+                          maxSize={100 * 1024 * 1024} // 100 MB
+                          folder="courses/documents"
+                          hint="PDF, DOCX, PPTX up to 100 MB"
+                          currentUrl={lessonForm.documentUrl}
+                          currentFilename={lessonForm.documentFilename}
+                          onUpload={(result) => {
+                            setLessonForm({
+                              ...lessonForm,
+                              documentUrl: result.url,
+                              documentFilename: result.filename,
+                              documentSize: result.size,
+                            });
+                          }}
+                        />
                         <Toggle
                           checked={lessonForm.allowDownload}
                           onChange={v => setLessonForm({ ...lessonForm, allowDownload: v })}
@@ -616,13 +697,26 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                         />
                       </div>
                     )}
+
+                    {/* === IMAGE LESSON === */}
                     {lessonForm.type === 'image' && (
                       <div className="space-y-4 p-4 bg-amber-50 rounded-lg">
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                          <ImageIcon className="w-8 h-8 mx-auto text-gray-400 mb-2" />
-                          <p className="text-sm text-gray-600">Click or drag to upload an image</p>
-                          <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 10MB</p>
-                        </div>
+                        <FileUpload
+                          label="Upload Image"
+                          accept="image/*"
+                          maxSize={10 * 1024 * 1024} // 10 MB
+                          folder="courses/images"
+                          hint="PNG, JPG, GIF, WebP up to 10 MB"
+                          currentUrl={lessonForm.imageUrl}
+                          currentFilename={lessonForm.imageFilename}
+                          onUpload={(result) => {
+                            setLessonForm({
+                              ...lessonForm,
+                              imageUrl: result.url,
+                              imageFilename: result.filename,
+                            });
+                          }}
+                        />
                         <Toggle
                           checked={lessonForm.allowDownload}
                           onChange={v => setLessonForm({ ...lessonForm, allowDownload: v })}
@@ -704,6 +798,28 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
               {isPending ? 'Saving...' : editingLesson ? 'Save Changes' : 'Add Lesson'}
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Cover Image Upload Modal */}
+      <Modal
+        isOpen={coverUploadOpen}
+        onClose={() => setCoverUploadOpen(false)}
+        title="Upload Cover Image"
+        size="sm"
+      >
+        <div className="p-6">
+          <FileUpload
+            accept="image/*"
+            maxSize={5 * 1024 * 1024}
+            folder="courses/covers"
+            hint="PNG, JPG up to 5 MB. Recommended: 1200×600"
+            currentUrl={coverImageUrl}
+            onUpload={(result) => {
+              setCoverImageUrl(result.url);
+              setCoverUploadOpen(false);
+            }}
+          />
         </div>
       </Modal>
 

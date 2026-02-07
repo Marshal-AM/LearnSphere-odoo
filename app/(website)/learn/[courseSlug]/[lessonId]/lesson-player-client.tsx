@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -24,6 +24,32 @@ const typeIcons: Record<LessonType, React.ElementType> = {
   image: ImageIcon,
   quiz: HelpCircle,
 };
+
+/**
+ * Detect if a URL is a YouTube/Vimeo embed and return the embed URL.
+ * Returns null for direct video URLs.
+ */
+function getVideoEmbedUrl(url: string): string | null {
+  // YouTube
+  const ytMatch = url.match(
+    /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/
+  );
+  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
+
+  // Vimeo
+  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+
+  return null;
+}
+
+/**
+ * Check if a URL points to a PDF document.
+ */
+function isPdf(url: string, filename?: string): boolean {
+  if (filename?.toLowerCase().endsWith('.pdf')) return true;
+  try { return new URL(url).pathname.toLowerCase().endsWith('.pdf'); } catch { return false; }
+}
 
 interface Props {
   course: Course;
@@ -231,57 +257,116 @@ export default function LessonPlayerClient({
               <p className="text-gray-600 mb-6 leading-relaxed">{currentLesson.description}</p>
             )}
 
-            {/* Video viewer */}
+            {/* ======== VIDEO PLAYER ======== */}
             {currentLesson.lesson_type === 'video' && currentLesson.video_url && (
-              <div className="bg-black rounded-xl aspect-video flex items-center justify-center mb-6">
-                <div className="text-center text-white">
-                  <Video className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">Video Player</p>
-                  <p className="text-sm text-white/60 mt-1">{currentLesson.video_url}</p>
-                  <p className="text-sm text-white/60">{formatDuration(currentLesson.video_duration_minutes || 0)}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Document viewer */}
-            {currentLesson.lesson_type === 'document' && (
-              <div className="bg-gray-100 rounded-xl p-12 flex items-center justify-center mb-6 min-h-[400px]">
-                <div className="text-center">
-                  <FileText className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                  <p className="text-lg font-medium text-gray-700">Document Viewer</p>
-                  <p className="text-sm text-gray-500 mt-1">{currentLesson.document_filename}</p>
-                  {currentLesson.document_allow_download && (
-                    <Button variant="outline" size="sm" className="mt-4">
-                      <Download className="w-4 h-4" />
-                      Download
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Image viewer */}
-            {currentLesson.lesson_type === 'image' && (
-              <div className="rounded-xl overflow-hidden mb-6">
-                {currentLesson.image_url && (
-                  <img
-                    src={currentLesson.image_url}
-                    alt={currentLesson.title}
-                    className="w-full max-h-[600px] object-contain bg-gray-100"
-                  />
+              <div className="mb-6">
+                {(() => {
+                  const embedUrl = getVideoEmbedUrl(currentLesson.video_url);
+                  if (embedUrl) {
+                    // YouTube / Vimeo embed
+                    return (
+                      <div className="rounded-xl overflow-hidden aspect-video">
+                        <iframe
+                          src={embedUrl}
+                          className="w-full h-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                          title={currentLesson.title}
+                        />
+                      </div>
+                    );
+                  }
+                  // Direct video URL (S3, etc.) — native HTML5 player
+                  return (
+                    <div className="rounded-xl overflow-hidden bg-black">
+                      <video
+                        src={currentLesson.video_url}
+                        controls
+                        controlsList="nodownload"
+                        preload="metadata"
+                        className="w-full aspect-video"
+                        playsInline
+                      >
+                        Your browser does not support the video tag.
+                      </video>
+                    </div>
+                  );
+                })()}
+                {currentLesson.video_duration_minutes != null && currentLesson.video_duration_minutes > 0 && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Duration: {formatDuration(currentLesson.video_duration_minutes)}
+                  </p>
                 )}
-                {currentLesson.image_allow_download && (
+              </div>
+            )}
+
+            {/* ======== DOCUMENT VIEWER ======== */}
+            {currentLesson.lesson_type === 'document' && (
+              <div className="mb-6">
+                {currentLesson.document_url && isPdf(currentLesson.document_url, currentLesson.document_filename || undefined) ? (
+                  // Inline PDF viewer
+                  <div className="rounded-xl overflow-hidden border border-gray-200">
+                    <iframe
+                      src={currentLesson.document_url}
+                      className="w-full"
+                      style={{ height: '80vh', minHeight: '500px' }}
+                      title={currentLesson.title}
+                    />
+                  </div>
+                ) : (
+                  // Non-PDF document — show download card
+                  <div className="bg-gray-50 rounded-xl p-12 flex items-center justify-center min-h-[300px]">
+                    <div className="text-center">
+                      <FileText className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                      <p className="text-lg font-medium text-gray-700">{currentLesson.document_filename || 'Document'}</p>
+                      {currentLesson.document_size_bytes && (
+                        <p className="text-sm text-gray-500 mt-1">
+                          Size: {(currentLesson.document_size_bytes / (1024 * 1024)).toFixed(1)} MB
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {currentLesson.document_allow_download && currentLesson.document_url && (
                   <div className="mt-3">
-                    <Button variant="outline" size="sm">
-                      <Download className="w-4 h-4" />
-                      Download Image
-                    </Button>
+                    <a href={currentLesson.document_url} download target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" size="sm">
+                        <Download className="w-4 h-4" />
+                        Download {currentLesson.document_filename || 'Document'}
+                      </Button>
+                    </a>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Quiz */}
+            {/* ======== IMAGE VIEWER ======== */}
+            {currentLesson.lesson_type === 'image' && (
+              <div className="mb-6">
+                {currentLesson.image_url && (
+                  <div className="rounded-xl overflow-hidden bg-gray-100">
+                    <img
+                      src={currentLesson.image_url}
+                      alt={currentLesson.title}
+                      className="w-full max-h-[700px] object-contain"
+                    />
+                  </div>
+                )}
+                {currentLesson.image_allow_download && currentLesson.image_url && (
+                  <div className="mt-3">
+                    <a href={currentLesson.image_url} download target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" size="sm">
+                        <Download className="w-4 h-4" />
+                        Download Image
+                      </Button>
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ======== QUIZ ======== */}
             {currentLesson.lesson_type === 'quiz' && quiz && (
               <div className="mb-6">
                 {!quizStarted && !quizCompleted && (

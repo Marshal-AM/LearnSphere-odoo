@@ -67,6 +67,23 @@ export async function getAllCourses(): Promise<Course[]> {
   );
 }
 
+/**
+ * Get only courses where the given user is the course_admin_id (for instructor role).
+ */
+export async function getInstructorCourses(userId: string): Promise<Course[]> {
+  return query<Course>(
+    `SELECT id, title, slug, short_description, full_description, cover_image_url,
+            visibility, access_rule, price::float, currency, status,
+            published_at::text, created_by, course_admin_id, tags, website_url,
+            views_count, total_lessons_count, total_duration_minutes,
+            average_rating::float, total_reviews_count,
+            created_at::text, updated_at::text, deleted_at::text
+     FROM courses WHERE course_admin_id = $1 AND deleted_at IS NULL
+     ORDER BY created_at DESC`,
+    [userId]
+  );
+}
+
 export async function getPublishedCourses(): Promise<Course[]> {
   return query<Course>(
     `SELECT id, title, slug, short_description, full_description, cover_image_url,

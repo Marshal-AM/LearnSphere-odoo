@@ -22,9 +22,11 @@ type ViewMode = 'kanban' | 'list';
 export default function CoursesDashboardClient({
   courses,
   tags,
+  isAdmin = false,
 }: {
   courses: Course[];
   tags: Tag[];
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
@@ -67,10 +69,12 @@ export default function CoursesDashboardClient({
           <h1 className="text-2xl font-bold text-gray-900">Courses</h1>
           <p className="text-sm text-gray-500 mt-1">{filteredCourses.length} courses total</p>
         </div>
-        <Button onClick={() => setCreateModalOpen(true)}>
-          <Plus className="w-4 h-4" />
-          Create Course
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => setCreateModalOpen(true)}>
+            <Plus className="w-4 h-4" />
+            Create Course
+          </Button>
+        )}
       </div>
 
       {/* Toolbar */}
