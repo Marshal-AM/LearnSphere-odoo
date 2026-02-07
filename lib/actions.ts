@@ -232,6 +232,41 @@ export async function enrollInCourse(courseId: string) {
 }
 
 // =====================================================
+// PURCHASE COURSE (PAID - NO GATEWAY)
+// =====================================================
+export async function purchaseCourse(courseId: string) {
+  const session = await getSession();
+  if (!session?.user) throw new Error('Unauthorized');
+
+  // Fetch course to get price and currency
+  const { getCourseById } = await import('@/lib/queries');
+  const course = await getCourseById(courseId);
+  if (!course) throw new Error('Course not found');
+  if (course.access_rule !== 'on_payment') throw new Error('Course is not a paid course');
+
+  // Enroll the user
+  const result = await queryOne<{ id: string }>(
+    `SELECT enroll_user_in_course($1, $2) as id`,
+    [session.user.id, courseId]
+  );
+
+  // Set payment fields on the enrollment
+  await query(
+    `UPDATE course_enrollments
+     SET payment_status = 'completed',
+         payment_amount = $1,
+         payment_currency = $2,
+         payment_transaction_id = $3,
+         payment_date = NOW()
+     WHERE user_id = $4 AND course_id = $5`,
+    [course.price || 0, course.currency || 'USD', `TXN-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`, session.user.id, courseId]
+  );
+
+  revalidatePath(`/courses/${course.slug}`);
+  return result;
+}
+
+// =====================================================
 // LESSON PROGRESS ACTIONS
 // =====================================================
 export async function markLessonComplete(lessonId: string, courseId: string, enrollmentId: string) {

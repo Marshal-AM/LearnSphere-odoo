@@ -478,3 +478,62 @@ export async function getReportingData(): Promise<ReportingDashboardRow[]> {
      ORDER BY enrolled_at DESC`
   );
 }
+
+// =====================================================
+// PAID COURSE PURCHASES
+// =====================================================
+export interface PurchaseRecord {
+  enrollment_id: string;
+  user_id: string;
+  user_name: string;
+  user_email: string;
+  course_id: string;
+  course_title: string;
+  course_slug: string;
+  payment_status: string;
+  payment_amount: number;
+  payment_currency: string;
+  payment_transaction_id: string;
+  payment_date: string;
+  enrolled_at: string;
+  status: string;
+  completion_percentage: number;
+}
+
+export async function getPaidCoursePurchases(instructorId?: string): Promise<PurchaseRecord[]> {
+  const baseQuery = `
+    SELECT
+      e.id as enrollment_id,
+      u.id as user_id,
+      u.first_name || ' ' || u.last_name as user_name,
+      u.email as user_email,
+      c.id as course_id,
+      c.title as course_title,
+      c.slug as course_slug,
+      e.payment_status,
+      e.payment_amount::float as payment_amount,
+      e.payment_currency,
+      e.payment_transaction_id,
+      e.payment_date::text as payment_date,
+      e.enrolled_at::text as enrolled_at,
+      e.status::text as status,
+      e.completion_percentage::float as completion_percentage
+    FROM course_enrollments e
+    JOIN users u ON e.user_id = u.id
+    JOIN courses c ON e.course_id = c.id
+    WHERE e.payment_status = 'completed'
+      AND c.access_rule = 'on_payment'
+      AND c.deleted_at IS NULL
+  `;
+
+  if (instructorId) {
+    return query<PurchaseRecord>(
+      baseQuery + ` AND (c.course_admin_id = $1 OR c.created_by = $1) ORDER BY e.payment_date DESC`,
+      [instructorId]
+    );
+  }
+
+  return query<PurchaseRecord>(
+    baseQuery + ` ORDER BY e.payment_date DESC`
+  );
+}

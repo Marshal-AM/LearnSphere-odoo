@@ -17,7 +17,7 @@ import { Modal } from '@/components/ui/modal';
 import { Textarea } from '@/components/ui/input';
 import { Avatar } from '@/components/ui/avatar';
 import { formatDuration, formatDate } from '@/lib/utils';
-import { enrollInCourse, submitReview } from '@/lib/actions';
+import { enrollInCourse, purchaseCourse, submitReview } from '@/lib/actions';
 import { motion } from 'framer-motion';
 import type { Course, Lesson, LessonProgress, CourseEnrollment, CourseReview, Tag, User } from '@/lib/types';
 
@@ -69,6 +69,13 @@ export default function CourseDetailClient({
   const handleEnroll = () => {
     startTransition(async () => {
       await enrollInCourse(course.id);
+      router.refresh();
+    });
+  };
+
+  const handlePurchase = () => {
+    startTransition(async () => {
+      await purchaseCourse(course.id);
       router.refresh();
     });
   };
@@ -309,10 +316,10 @@ export default function CourseDetailClient({
                 </Button>
               </Link>
             )}
-            {!enrollment && course.access_rule === 'on_payment' && (
-              <Button size="lg">
+            {!enrollment && isLoggedIn && course.access_rule === 'on_payment' && (
+              <Button size="lg" onClick={handlePurchase} disabled={isPending}>
                 <ShoppingCart className="w-5 h-5" />
-                Buy Course — ${course.price}
+                {isPending ? 'Processing...' : `Buy Course — $${course.price}`}
               </Button>
             )}
             {!enrollment && course.access_rule === 'on_invitation' && (

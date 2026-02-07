@@ -6,7 +6,7 @@ import { ReactNode, useState, useEffect, useCallback } from 'react';
 import {
   GraduationCap, BookOpen, BarChart3, LogOut, Bell,
   User as UserIcon, Settings, ChevronsUpDown, Globe,
-  Video,
+  Video, DollarSign,
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils';
@@ -99,6 +99,7 @@ export default function AdminLayoutClient({ children, user }: { children: ReactN
 
   const navigation = [
     { name: 'Courses', href: '/admin/courses', icon: BookOpen },
+    { name: 'Purchases', href: '/admin/purchases', icon: DollarSign },
     { name: 'Student Details', href: '/admin/reporting', icon: BarChart3 },
     ...(isInstructor
       ? [{ name: 'Meetings', href: '/admin/meetings', icon: Video }]
