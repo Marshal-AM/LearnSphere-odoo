@@ -57,7 +57,7 @@ export default function MeetingClient() {
       setAppState('haircheck');
 
       try {
-        await co.preAuth({ url: roomUrl });
+        await co.preAuth({ url: roomUrl! });
         if (!cancelledRef.current) await co.startCamera();
       } catch {
         if (!cancelledRef.current) setAppState('error');
@@ -209,7 +209,7 @@ function HairCheck({ joinCall, cancelCall }: { joinCall: (name: string) => void;
 
         {/* Video preview */}
         <div className="relative w-full aspect-video bg-gray-800 rounded-2xl overflow-hidden mb-6">
-          {localSessionId && <DailyVideo sessionId={localSessionId} mirror className="w-full h-full object-cover" />}
+          {localSessionId && <DailyVideo sessionId={localSessionId} mirror type="video" className="w-full h-full object-cover" />}
           {!localSessionId && (
             <div className="absolute inset-0 flex items-center justify-center">
               <Loader2 className="w-6 h-6 text-gray-500 animate-spin" />
