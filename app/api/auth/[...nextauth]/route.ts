@@ -63,9 +63,13 @@ export const authOptions: NextAuthOptions = {
           }>(
             `INSERT INTO users (email, first_name, last_name, google_id, oauth_provider, email_verified, email_verified_at, last_login_at)
              VALUES ($1, $2, $3, $4, 'google', true, NOW(), NOW())
+             ON CONFLICT (email) DO UPDATE SET google_id = $4, oauth_provider = 'google', last_login_at = NOW()
              RETURNING id, email, first_name, last_name, roles, total_points, current_badge`,
             [email, firstName, lastName, profile.sub]
           );
+
+          // If ON CONFLICT fired, this is an existing user not a new one
+          const isActuallyNew = newUser!.roles?.length === 1 && newUser!.roles[0] === 'learner';
 
           return {
             id: newUser!.id,
@@ -76,7 +80,7 @@ export const authOptions: NextAuthOptions = {
             totalPoints: newUser!.total_points,
             currentBadge: newUser!.current_badge as any,
             avatarUrl: undefined,
-            isNewUser: true,
+            isNewUser: isActuallyNew,
           };
         }
       },

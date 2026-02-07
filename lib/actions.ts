@@ -13,7 +13,24 @@ export async function createCourse(title: string) {
   const session = await getSession();
   if (!session?.user) throw new Error('Unauthorized');
 
-  const slug = slugify(title);
+  const baseSlug = slugify(title);
+
+  // Find existing slugs that match the base or have a numeric suffix (e.g. my-course, my-course-2)
+  const existing = await query<{ slug: string }>(
+    `SELECT slug FROM courses WHERE slug = $1 OR slug LIKE $2`,
+    [baseSlug, `${baseSlug}-%`]
+  );
+
+  let slug = baseSlug;
+  if (existing.length > 0) {
+    const existingSlugs = new Set(existing.map(r => r.slug));
+    let suffix = 2;
+    while (existingSlugs.has(slug)) {
+      slug = `${baseSlug}-${suffix}`;
+      suffix++;
+    }
+  }
+
   const course = await queryOne<{ id: string; slug: string }>(
     `INSERT INTO courses (title, slug, created_by, course_admin_id)
      VALUES ($1, $2, $3, $3)
@@ -103,9 +120,9 @@ export async function createLesson(courseId: string, data: {
   const session = await getSession();
   if (!session?.user) throw new Error('Unauthorized');
 
-  // Get next sequence order
+  // Get next sequence order (include soft-deleted to avoid unique constraint collision)
   const maxSeq = await queryOne<{ max_seq: number }>(
-    `SELECT COALESCE(MAX(sequence_order), 0) as max_seq FROM lessons WHERE course_id = $1 AND deleted_at IS NULL`,
+    `SELECT COALESCE(MAX(sequence_order), 0) as max_seq FROM lessons WHERE course_id = $1`,
     [courseId]
   );
 
@@ -197,8 +214,8 @@ export async function saveQuizQuestions(quizId: string, questions: {
   const session = await getSession();
   if (!session?.user) throw new Error('Unauthorized');
 
-  // Delete existing questions
-  await query(`UPDATE quiz_questions SET deleted_at = NOW() WHERE quiz_id = $1`, [quizId]);
+  // Hard-delete existing questions to avoid unique constraint (quiz_id, sequence_order) collision with soft-deleted rows
+  await query(`DELETE FROM quiz_questions WHERE quiz_id = $1`, [quizId]);
 
   // Insert new questions
   for (const q of questions) {
@@ -553,14 +570,21 @@ export async function registerUser(data: {
   const passwordHash = await hash(data.password, 12);
   const roles = `{${data.role}}`;
 
-  const user = await queryOne<{ id: string }>(
-    `INSERT INTO users (email, password_hash, first_name, last_name, roles, email_verified)
-     VALUES ($1, $2, $3, $4, $5::user_role[], true)
-     RETURNING id`,
-    [data.email, passwordHash, data.firstName, data.lastName, roles]
-  );
+  try {
+    const user = await queryOne<{ id: string }>(
+      `INSERT INTO users (email, password_hash, first_name, last_name, roles, email_verified)
+       VALUES ($1, $2, $3, $4, $5::user_role[], true)
+       RETURNING id`,
+      [data.email, passwordHash, data.firstName, data.lastName, roles]
+    );
 
-  return user;
+    return user;
+  } catch (err: any) {
+    if (err?.code === '23505') {
+      throw new Error('User already exists');
+    }
+    throw err;
+  }
 }
 
 // =====================================================
