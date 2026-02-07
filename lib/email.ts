@@ -85,16 +85,16 @@ export async function sendInvitationEmail({
   to,
   inviterName,
   courseName,
-  token,
+  courseSlug,
   message,
 }: {
   to: string;
   inviterName: string;
   courseName: string;
-  token: string;
+  courseSlug: string;
   message?: string;
 }) {
-  const acceptUrl = `${APP_URL}/invite/${token}`;
+  const acceptUrl = `${APP_URL}/courses/${courseSlug}`;
 
   const messageBlock = message
     ? `<div style="margin:20px 0;padding:16px;background-color:#f5f3ff;border-left:4px solid #7c3aed;border-radius:0 8px 8px 0;">
@@ -113,7 +113,7 @@ export async function sendInvitationEmail({
       <tr>
         <td style="background:linear-gradient(135deg,#7c3aed,#4f46e5);border-radius:12px;padding:14px 32px;">
           <a href="${acceptUrl}" style="color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;display:inline-block;">
-            Accept Invitation
+            View Course
           </a>
         </td>
       </tr>
@@ -129,7 +129,7 @@ export async function sendInvitationEmail({
     to,
     subject: `You've been invited to "${courseName}" on ${APP_NAME}`,
     html: wrapHtml(body),
-    text: `${inviterName} has invited you to join "${courseName}" on ${APP_NAME}. Accept here: ${acceptUrl}`,
+    text: `${inviterName} has invited you to join "${courseName}" on ${APP_NAME}. View the course here: ${acceptUrl}`,
   });
 }
 

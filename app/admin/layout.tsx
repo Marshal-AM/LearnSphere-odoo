@@ -6,8 +6,11 @@ export default async function BackofficeLayout({ children }: { children: React.R
   const user = await getCurrentUser();
 
   const roles = Array.isArray(user?.roles) ? user.roles : [];
-  if (!user || !roles.some(r => r === 'admin' || r === 'instructor')) {
+  if (!user) {
     redirect('/login');
+  }
+  if (!roles.some(r => r === 'admin' || r === 'instructor')) {
+    redirect('/my-courses');
   }
 
   return (

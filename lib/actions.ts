@@ -427,7 +427,7 @@ export async function sendInvitation(courseId: string, email: string, message?: 
       to: email,
       inviterName,
       courseName,
-      token,
+      courseSlug: course?.slug || courseId,
       message: message || undefined,
     });
   } catch (err) {
