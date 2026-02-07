@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Eye, UserPlus, Mail, Upload, Video, FileText,
   Image as ImageIcon, HelpCircle, MoreVertical, Edit, Trash2, Plus,
-  GripVertical, ExternalLink, Link as LinkIcon,
+  GripVertical, ExternalLink, Link as LinkIcon, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -89,25 +89,58 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
   // Cover image upload
   const [coverUploadOpen, setCoverUploadOpen] = useState(false);
 
+  // Validation errors
+  const [courseErrors, setCourseErrors] = useState<Record<string, string>>({});
+  const [lessonErrors, setLessonErrors] = useState<Record<string, string>>({});
+
+  /** Small inline error label */
+  const FieldError = ({ field, errors }: { field: string; errors: Record<string, string> }) => {
+    if (!errors[field]) return null;
+    return (
+      <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+        <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+        {errors[field]}
+      </p>
+    );
+  };
+
+  // --- Course-level validation ---
+  const validateCourse = (): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (!title.trim()) errs.title = 'Course title is required.';
+    if (isPublished && !websiteUrl.trim()) errs.websiteUrl = 'Website URL is required when the course is published.';
+    if (accessRule === 'on_payment' && (!price || parseFloat(price) <= 0)) errs.price = 'A price greater than 0 is required for paid courses.';
+    return errs;
+  };
+
   const handleSave = () => {
+    const errs = validateCourse();
+    setCourseErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+
     startTransition(async () => {
-      const data: Record<string, any> = {
-        title,
-        full_description: description,
-        visibility,
-        access_rule: accessRule,
-        price: accessRule === 'on_payment' ? parseFloat(price) || null : null,
-        website_url: websiteUrl || undefined,
-        tags: courseTagsState,
-        status: isPublished ? 'published' : 'draft',
-        cover_image_url: coverImageUrl || undefined,
-      };
-      // Only admin can change the course admin
-      if (isAdmin) {
-        data.course_admin_id = adminId || null;
+      try {
+        const data: Record<string, any> = {
+          title,
+          full_description: description,
+          visibility,
+          access_rule: accessRule,
+          price: accessRule === 'on_payment' ? parseFloat(price) || null : null,
+          website_url: websiteUrl || undefined,
+          tags: courseTagsState,
+          status: isPublished ? 'published' : 'draft',
+          cover_image_url: coverImageUrl || undefined,
+        };
+        // Only admin can change the course admin
+        if (isAdmin) {
+          data.course_admin_id = adminId || null;
+        }
+        await updateCourse(course.id, data);
+        router.refresh();
+      } catch (err: any) {
+        // Fallback: surface unexpected DB errors as a generic alert
+        setCourseErrors({ _global: err?.message || 'Failed to save course.' });
       }
-      await updateCourse(course.id, data);
-      router.refresh();
     });
   };
 
@@ -141,46 +174,73 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
         description: '', attachments: [],
       });
     }
+    setLessonErrors({});
     setLessonModalOpen(true);
   };
 
+  // --- Lesson-level validation ---
+  const validateLesson = (): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (!lessonForm.title.trim()) errs.lessonTitle = 'Lesson title is required.';
+    if (lessonForm.type === 'video') {
+      if (!lessonForm.videoUrl.trim()) errs.videoUrl = 'A video URL or uploaded video is required for video lessons.';
+      if (!lessonForm.videoDuration || parseFloat(lessonForm.videoDuration) <= 0) errs.videoDuration = 'Duration is required for video lessons. Upload a video to auto-detect or enter manually.';
+    }
+    if (lessonForm.type === 'document') {
+      if (!lessonForm.documentUrl.trim()) errs.documentUrl = 'A document file is required for document lessons.';
+    }
+    if (lessonForm.type === 'image') {
+      if (!lessonForm.imageUrl.trim()) errs.imageUrl = 'An image file is required for image lessons.';
+    }
+    return errs;
+  };
+
   const handleSaveLesson = () => {
+    const errs = validateLesson();
+    setLessonErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+
     startTransition(async () => {
-      if (editingLesson) {
-        await updateLesson(editingLesson, {
-          title: lessonForm.title,
-          lesson_type: lessonForm.type,
-          responsible_user_id: lessonForm.responsible || null,
-          video_url: lessonForm.videoUrl || null,
-          video_duration_minutes: lessonForm.videoDuration ? parseFloat(lessonForm.videoDuration) : null,
-          document_url: lessonForm.documentUrl || null,
-          document_filename: lessonForm.documentFilename || null,
-          document_size_bytes: lessonForm.documentSize || null,
-          image_url: lessonForm.imageUrl || null,
-          image_filename: lessonForm.imageFilename || null,
-          description: lessonForm.description || null,
-          document_allow_download: lessonForm.allowDownload,
-          image_allow_download: lessonForm.allowDownload,
-        });
-      } else {
-        await createLesson(course.id, {
-          title: lessonForm.title,
-          lesson_type: lessonForm.type,
-          responsible_user_id: lessonForm.responsible || undefined,
-          video_url: lessonForm.videoUrl || undefined,
-          video_duration_minutes: lessonForm.videoDuration ? parseFloat(lessonForm.videoDuration) : undefined,
-          document_url: lessonForm.documentUrl || undefined,
-          document_filename: lessonForm.documentFilename || undefined,
-          document_size_bytes: lessonForm.documentSize || undefined,
-          image_url: lessonForm.imageUrl || undefined,
-          image_filename: lessonForm.imageFilename || undefined,
-          description: lessonForm.description || undefined,
-          document_allow_download: lessonForm.allowDownload,
-          image_allow_download: lessonForm.allowDownload,
-        });
+      try {
+        if (editingLesson) {
+          await updateLesson(editingLesson, {
+            title: lessonForm.title,
+            lesson_type: lessonForm.type,
+            responsible_user_id: lessonForm.responsible || null,
+            video_url: lessonForm.videoUrl || null,
+            video_duration_minutes: lessonForm.videoDuration ? parseFloat(lessonForm.videoDuration) : null,
+            document_url: lessonForm.documentUrl || null,
+            document_filename: lessonForm.documentFilename || null,
+            document_size_bytes: lessonForm.documentSize || null,
+            image_url: lessonForm.imageUrl || null,
+            image_filename: lessonForm.imageFilename || null,
+            description: lessonForm.description || null,
+            document_allow_download: lessonForm.allowDownload,
+            image_allow_download: lessonForm.allowDownload,
+          });
+        } else {
+          await createLesson(course.id, {
+            title: lessonForm.title,
+            lesson_type: lessonForm.type,
+            responsible_user_id: lessonForm.responsible || undefined,
+            video_url: lessonForm.videoUrl || undefined,
+            video_duration_minutes: lessonForm.videoDuration ? parseFloat(lessonForm.videoDuration) : undefined,
+            document_url: lessonForm.documentUrl || undefined,
+            document_filename: lessonForm.documentFilename || undefined,
+            document_size_bytes: lessonForm.documentSize || undefined,
+            image_url: lessonForm.imageUrl || undefined,
+            image_filename: lessonForm.imageFilename || undefined,
+            description: lessonForm.description || undefined,
+            document_allow_download: lessonForm.allowDownload,
+            image_allow_download: lessonForm.allowDownload,
+          });
+        }
+        setLessonErrors({});
+        setLessonModalOpen(false);
+        router.refresh();
+      } catch (err: any) {
+        setLessonErrors({ _global: err?.message || 'Failed to save lesson.' });
       }
-      setLessonModalOpen(false);
-      router.refresh();
     });
   };
 
@@ -351,9 +411,16 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
               label="Price (USD)"
               type="number"
               value={price}
-              onChange={e => setPrice(e.target.value)}
+              onChange={e => { setPrice(e.target.value); setCourseErrors(prev => { const { price: _, ...rest } = prev; return rest; }); }}
               placeholder="49.99"
             />
+            {(!price || parseFloat(price) <= 0) && (
+              <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                A price greater than $0 is required for paid courses
+              </p>
+            )}
+            <FieldError field="price" errors={courseErrors} />
           </div>
         )}
       </div>
@@ -441,6 +508,21 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
 
   return (
     <div>
+      {/* Validation error banner */}
+      {Object.keys(courseErrors).length > 0 && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-red-800">Please fix the following issues before saving:</p>
+            <ul className="mt-1 list-disc list-inside text-sm text-red-700 space-y-0.5">
+              {Object.entries(courseErrors).map(([key, msg]) => (
+                <li key={key}>{msg}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Link
@@ -461,7 +543,11 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
       <div className="flex flex-wrap items-center gap-3 mb-6 p-4 bg-white rounded-xl border border-gray-200">
         <Toggle
           checked={isPublished}
-          onChange={setIsPublished}
+          onChange={(v) => {
+            setIsPublished(v);
+            // Clear websiteUrl error when switching to draft
+            if (!v) setCourseErrors(prev => { const { websiteUrl: _, ...rest } = prev; return rest; });
+          }}
           label={isPublished ? 'Published' : 'Draft'}
         />
         <div className="flex-1" />
@@ -495,20 +581,32 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
       {/* Course fields */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <div className="grid md:grid-cols-2 gap-4">
-          <Input
-            label="Title"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            placeholder="Course title"
-            required
-          />
-          <Input
-            label="Website URL"
-            value={websiteUrl}
-            onChange={e => setWebsiteUrl(e.target.value)}
-            placeholder="https://..."
-            helperText={isPublished ? 'Required when published' : undefined}
-          />
+          <div>
+            <Input
+              label="Title"
+              value={title}
+              onChange={e => { setTitle(e.target.value); setCourseErrors(prev => { const { title: _, ...rest } = prev; return rest; }); }}
+              placeholder="Course title"
+              required
+            />
+            <FieldError field="title" errors={courseErrors} />
+          </div>
+          <div>
+            <Input
+              label="Website URL"
+              value={websiteUrl}
+              onChange={e => { setWebsiteUrl(e.target.value); setCourseErrors(prev => { const { websiteUrl: _, ...rest } = prev; return rest; }); }}
+              placeholder="https://..."
+              helperText={isPublished && !websiteUrl.trim() ? undefined : (isPublished ? 'Required when published' : undefined)}
+            />
+            {isPublished && !websiteUrl.trim() && !courseErrors.websiteUrl && (
+              <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                Required before publishing
+              </p>
+            )}
+            <FieldError field="websiteUrl" errors={courseErrors} />
+          </div>
           <div className="space-y-1">
             <label className="block text-sm font-medium text-gray-700">Tags</label>
             <div className="flex flex-wrap gap-2 p-2 border border-gray-300 rounded-lg min-h-[42px]">
@@ -591,13 +689,30 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                 label: 'Content',
                 content: (
                   <div className="space-y-4 pt-2">
-                    <Input
-                      label="Lesson Title"
-                      value={lessonForm.title}
-                      onChange={e => setLessonForm({ ...lessonForm, title: e.target.value })}
-                      placeholder="Enter lesson title"
-                      required
-                    />
+                    {/* Lesson validation errors banner */}
+                    {Object.keys(lessonErrors).length > 0 && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-semibold text-red-800">Please fix the following:</p>
+                          <ul className="mt-0.5 list-disc list-inside text-xs text-red-700 space-y-0.5">
+                            {Object.entries(lessonErrors).map(([key, msg]) => (
+                              <li key={key}>{msg}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <Input
+                        label="Lesson Title"
+                        value={lessonForm.title}
+                        onChange={e => { setLessonForm({ ...lessonForm, title: e.target.value }); setLessonErrors(prev => { const { lessonTitle: _, ...rest } = prev; return rest; }); }}
+                        placeholder="Enter lesson title"
+                        required
+                      />
+                      <FieldError field="lessonTitle" errors={lessonErrors} />
+                    </div>
                     <div className="space-y-1">
                       <label className="block text-sm font-medium text-gray-700">Lesson Type</label>
                       <div className="grid grid-cols-3 gap-2">
@@ -642,12 +757,15 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                           currentUrl={lessonForm.videoUrl.startsWith('http') && !lessonForm.videoUrl.includes('youtube') && !lessonForm.videoUrl.includes('vimeo') ? lessonForm.videoUrl : ''}
                           currentFilename={lessonForm.videoUrl ? 'Video file' : ''}
                           onUpload={(result) => {
-                            setLessonForm({ ...lessonForm, videoUrl: result.url });
+                            setLessonForm(prev => ({ ...prev, videoUrl: result.url }));
+                            setLessonErrors(prev => { const { videoUrl: _, ...rest } = prev; return rest; });
                           }}
                           onDurationDetected={(minutes) => {
                             setLessonForm(prev => ({ ...prev, videoDuration: minutes.toString() }));
+                            setLessonErrors(prev => { const { videoDuration: _, ...rest } = prev; return rest; });
                           }}
                         />
+                        <FieldError field="videoUrl" errors={lessonErrors} />
                         <div className="flex items-center gap-3 text-xs text-gray-500">
                           <div className="flex-1 h-px bg-gray-300" />
                           <span>or paste an external URL</span>
@@ -656,17 +774,71 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                         <Input
                           label="Video URL (YouTube / Vimeo / Direct)"
                           value={lessonForm.videoUrl}
-                          onChange={e => setLessonForm({ ...lessonForm, videoUrl: e.target.value })}
+                          onChange={e => { setLessonForm({ ...lessonForm, videoUrl: e.target.value }); setLessonErrors(prev => { const { videoUrl: _, ...rest } = prev; return rest; }); }}
                           placeholder="https://youtube.com/watch?v=... or direct URL"
                         />
-                        <Input
-                          label="Duration (minutes)"
-                          type="number"
-                          value={lessonForm.videoDuration}
-                          onChange={e => setLessonForm({ ...lessonForm, videoDuration: e.target.value })}
-                          placeholder="Auto-detected on upload, or enter manually"
-                          helperText={lessonForm.videoDuration ? `${lessonForm.videoDuration} min` : 'Will be auto-detected when uploading a video file'}
-                        />
+
+                        {/* Video URL Preview */}
+                        {lessonForm.videoUrl && (() => {
+                          const url = lessonForm.videoUrl;
+                          const ytMatch = url.match(
+                            /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/
+                          );
+                          const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+                          if (ytMatch) {
+                            return (
+                              <div className="rounded-lg overflow-hidden border border-gray-200">
+                                <iframe
+                                  src={`https://www.youtube.com/embed/${ytMatch[1]}`}
+                                  className="w-full aspect-video"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowFullScreen
+                                  title="Video preview"
+                                />
+                              </div>
+                            );
+                          }
+                          if (vimeoMatch) {
+                            return (
+                              <div className="rounded-lg overflow-hidden border border-gray-200">
+                                <iframe
+                                  src={`https://player.vimeo.com/video/${vimeoMatch[1]}`}
+                                  className="w-full aspect-video"
+                                  allow="autoplay; fullscreen; picture-in-picture"
+                                  allowFullScreen
+                                  title="Video preview"
+                                />
+                              </div>
+                            );
+                          }
+                          // Direct video URL — show native player (only if not already shown by FileUpload)
+                          if (url.startsWith('http') && !url.includes('youtube') && !url.includes('vimeo')) {
+                            return (
+                              <div className="rounded-lg overflow-hidden bg-black border border-gray-200">
+                                <video
+                                  src={url}
+                                  controls
+                                  preload="metadata"
+                                  className="w-full max-h-[240px]"
+                                  playsInline
+                                />
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+
+                        <div>
+                          <Input
+                            label="Duration (minutes)"
+                            type="number"
+                            value={lessonForm.videoDuration}
+                            onChange={e => { setLessonForm({ ...lessonForm, videoDuration: e.target.value }); setLessonErrors(prev => { const { videoDuration: _, ...rest } = prev; return rest; }); }}
+                            placeholder="Auto-detected on upload, or enter manually"
+                            helperText={lessonForm.videoDuration ? `${lessonForm.videoDuration} min` : 'Will be auto-detected when uploading a video file'}
+                          />
+                          <FieldError field="videoDuration" errors={lessonErrors} />
+                        </div>
                       </div>
                     )}
 
@@ -688,8 +860,10 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                               documentFilename: result.filename,
                               documentSize: result.size,
                             });
+                            setLessonErrors(prev => { const { documentUrl: _, ...rest } = prev; return rest; });
                           }}
                         />
+                        <FieldError field="documentUrl" errors={lessonErrors} />
                         <Toggle
                           checked={lessonForm.allowDownload}
                           onChange={v => setLessonForm({ ...lessonForm, allowDownload: v })}
@@ -715,8 +889,10 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                               imageUrl: result.url,
                               imageFilename: result.filename,
                             });
+                            setLessonErrors(prev => { const { imageUrl: _, ...rest } = prev; return rest; });
                           }}
                         />
+                        <FieldError field="imageUrl" errors={lessonErrors} />
                         <Toggle
                           checked={lessonForm.allowDownload}
                           onChange={v => setLessonForm({ ...lessonForm, allowDownload: v })}

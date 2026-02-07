@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { GraduationCap, BookOpen, Presentation, Loader2 } from 'lucide-react';
@@ -16,26 +16,26 @@ export default function ChooseRolePage() {
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // If still loading session, show spinner
-  if (status === 'loading') {
+  // Redirect when not authenticated or already onboarded (must be in useEffect)
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (!session?.user) {
+      router.replace('/login');
+      return;
+    }
+    if (!session.user.needsOnboarding) {
+      const isInstructorOrAdmin = session.user.roles.some(r => r === 'admin' || r === 'instructor');
+      router.replace(isInstructorOrAdmin ? '/admin/courses' : '/my-courses');
+    }
+  }, [status, session, router]);
+
+  // Show spinner while loading, unauthenticated, or already-onboarded (redirect pending)
+  if (status === 'loading' || !session?.user || !session.user.needsOnboarding) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
-  }
-
-  // Not authenticated → redirect to login
-  if (!session?.user) {
-    router.replace('/login');
-    return null;
-  }
-
-  // Already onboarded (existing user returning) → redirect based on role
-  if (!session.user.needsOnboarding) {
-    const isInstructorOrAdmin = session.user.roles.some(r => r === 'admin' || r === 'instructor');
-    router.replace(isInstructorOrAdmin ? '/admin/courses' : '/my-courses');
-    return null;
   }
 
   const handleContinue = async () => {

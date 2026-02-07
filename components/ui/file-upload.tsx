@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, useCallback, DragEvent } from 'react';
-import { Upload, X, Loader2, CheckCircle2, AlertCircle, FileText, Video, Image as ImageIcon } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect, DragEvent } from 'react';
+import { Upload, X, Loader2, CheckCircle2, AlertCircle, FileText, Video, Image as ImageIcon, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface UploadResult {
@@ -53,22 +53,81 @@ export function FileUpload({
   const [error, setError] = useState('');
   const [uploadedUrl, setUploadedUrl] = useState(currentUrl || '');
   const [uploadedName, setUploadedName] = useState(currentFilename || '');
+  const [uploadedMime, setUploadedMime] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Keep a ref to the hidden video element so it's not GC'd before metadata loads
+  const durationVideoRef = useRef<HTMLVideoElement | null>(null);
+  const durationBlobRef = useRef<string | null>(null);
+
+  // Sync external prop changes
+  useEffect(() => {
+    setUploadedUrl(currentUrl || '');
+    setUploadedName(currentFilename || '');
+  }, [currentUrl, currentFilename]);
+
+  // Cleanup blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (durationBlobRef.current) {
+        URL.revokeObjectURL(durationBlobRef.current);
+      }
+    };
+  }, []);
 
   const detectVideoDuration = useCallback(
     (file: File) => {
       if (!file.type.startsWith('video/') || !onDurationDetected) return;
-      const url = URL.createObjectURL(file);
+
+      // Revoke previous blob if any
+      if (durationBlobRef.current) {
+        URL.revokeObjectURL(durationBlobRef.current);
+      }
+
+      const blobUrl = URL.createObjectURL(file);
+      durationBlobRef.current = blobUrl;
+
       const video = document.createElement('video');
-      video.preload = 'metadata';
-      video.onloadedmetadata = () => {
-        const minutes = Math.round(video.duration / 60 * 10) / 10; // 1 decimal
-        onDurationDetected(minutes);
-        URL.revokeObjectURL(url);
+      durationVideoRef.current = video; // prevent GC
+      video.preload = 'auto'; // 'auto' is more reliable than 'metadata' for duration
+      video.muted = true;
+
+      const cleanup = () => {
+        if (durationBlobRef.current === blobUrl) {
+          URL.revokeObjectURL(blobUrl);
+          durationBlobRef.current = null;
+        }
+        durationVideoRef.current = null;
       };
-      video.onerror = () => URL.revokeObjectURL(url);
-      video.src = url;
+
+      video.onloadedmetadata = () => {
+        if (video.duration && isFinite(video.duration) && video.duration > 0) {
+          const minutes = Math.round(video.duration / 60 * 10) / 10; // 1 decimal
+          onDurationDetected(minutes);
+          cleanup();
+        }
+        // If duration isn't available yet, wait for loadeddata
+      };
+
+      video.onloadeddata = () => {
+        if (video.duration && isFinite(video.duration) && video.duration > 0) {
+          const minutes = Math.round(video.duration / 60 * 10) / 10;
+          onDurationDetected(minutes);
+        }
+        cleanup();
+      };
+
+      video.onerror = () => cleanup();
+
+      // Fallback timeout in case events never fire
+      setTimeout(() => {
+        if (durationVideoRef.current === video) {
+          cleanup();
+        }
+      }, 15000);
+
+      video.src = blobUrl;
+      video.load(); // explicitly kick off loading
     },
     [onDurationDetected],
   );
@@ -89,12 +148,10 @@ export function FileUpload({
       setProgress(5);
 
       try {
-        // Build FormData and upload to our server-side endpoint
         const formData = new FormData();
         formData.append('file', file);
         formData.append('folder', folder || 'uploads');
 
-        // Upload with progress via XHR
         const fileUrl = await new Promise<string>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           xhr.upload.onprogress = (e) => {
@@ -127,6 +184,7 @@ export function FileUpload({
         setProgress(100);
         setUploadedUrl(fileUrl);
         setUploadedName(file.name);
+        setUploadedMime(file.type);
 
         onUpload({ url: fileUrl, filename: file.name, size: file.size, mimeType: file.type });
       } catch (err: any) {
@@ -152,7 +210,6 @@ export function FileUpload({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) uploadFile(file);
-      // Reset so the same file can be selected again
       e.target.value = '';
     },
     [uploadFile],
@@ -161,6 +218,7 @@ export function FileUpload({
   const handleRemove = () => {
     setUploadedUrl('');
     setUploadedName('');
+    setUploadedMime('');
     setProgress(0);
     onUpload({ url: '', filename: '', size: 0, mimeType: '' });
   };
@@ -171,20 +229,44 @@ export function FileUpload({
     return <FileText className="w-8 h-8 text-gray-400" />;
   };
 
+  // Check file types for preview
+  const isVideo = uploadedMime?.startsWith('video/') ||
+    uploadedName?.match(/\.(mp4|webm|mov|ogg|avi|mkv)$/i) ||
+    (accept?.includes('video') && uploadedUrl && !uploadedUrl.includes('youtube') && !uploadedUrl.includes('vimeo'));
+
+  const isImage = uploadedMime?.startsWith('image/') ||
+    uploadedUrl?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) ||
+    uploadedName?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
+
   // Preview / uploaded state
   if (uploadedUrl && !uploading) {
-    const isImage = uploadedUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) ||
-      (uploadedName && uploadedName.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i));
-
     return (
       <div className={cn('relative', className)}>
         {label && <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>}
+
+        {/* Video Preview */}
+        {isVideo && (
+          <div className="mb-2 rounded-lg overflow-hidden bg-black">
+            <video
+              src={uploadedUrl}
+              controls
+              preload="metadata"
+              className="w-full max-h-[280px]"
+              playsInline
+            />
+          </div>
+        )}
+
+        {/* Image Preview */}
+        {isImage && !isVideo && (
+          <div className="mb-2">
+            <img src={uploadedUrl} alt="" className="w-full max-h-[200px] object-contain rounded-lg bg-gray-100" />
+          </div>
+        )}
+
         <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
           <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            {isImage && (
-              <img src={uploadedUrl} alt="" className="w-16 h-16 object-cover rounded mb-1" />
-            )}
             <p className="text-sm font-medium text-gray-900 truncate">{uploadedName || 'Uploaded file'}</p>
             <p className="text-xs text-gray-500 truncate">{uploadedUrl}</p>
           </div>

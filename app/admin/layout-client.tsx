@@ -142,8 +142,8 @@ export default function AdminLayoutClient({ children, user }: { children: ReactN
               <p className="text-sm font-medium text-gray-900">{user.first_name} {user.last_name}</p>
               <p className="text-xs text-gray-500">{user.email}</p>
             </div>
-            <DropdownItem icon={<UserIcon className="w-4 h-4" />}>Profile</DropdownItem>
-            <DropdownItem icon={<Settings className="w-4 h-4" />}>Settings</DropdownItem>
+            <DropdownItem icon={<UserIcon className="w-4 h-4" />} onClick={() => window.location.href = '/profile'}>Profile</DropdownItem>
+            <DropdownItem icon={<Settings className="w-4 h-4" />} onClick={() => window.location.href = '/profile'}>Settings</DropdownItem>
             <div className="border-t border-gray-100" />
             <DropdownItem icon={<LogOut className="w-4 h-4" />} onClick={() => signOut({ callbackUrl: '/login' })}>
               Sign out

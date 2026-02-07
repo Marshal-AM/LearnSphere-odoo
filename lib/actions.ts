@@ -119,7 +119,7 @@ export async function createLesson(courseId: string, data: {
     [
       courseId, data.title, data.lesson_type, (maxSeq?.max_seq || 0) + 1,
       data.description || null, data.responsible_user_id || null,
-      data.video_url || null, data.video_duration_minutes || null,
+      data.video_url || null, data.lesson_type === 'video' ? (data.video_duration_minutes ?? 0) : null,
       data.document_url || null, data.document_filename || null,
       data.document_size_bytes || null, data.document_allow_download ?? true,
       data.image_url || null, data.image_filename || null,
