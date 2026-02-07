@@ -21,7 +21,7 @@ import { FileUpload } from '@/components/ui/file-upload';
 import { formatDuration, formatFileSize } from '@/lib/utils';
 import {
   updateCourse, createLesson, updateLesson, deleteLesson,
-  deleteQuiz, sendInvitation,
+  deleteQuiz, sendInvitation, contactAttendees,
 } from '@/lib/actions';
 import type { Course, Lesson, Quiz, Tag, LessonType, CourseVisibility, CourseAccessRule, User } from '@/lib/types';
 
@@ -1076,8 +1076,19 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
           />
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setContactModalOpen(false)}>Cancel</Button>
-            <Button onClick={() => { setContactModalOpen(false); }}>
-              Send Message
+            <Button
+              disabled={isPending || !contactSubject.trim() || !contactMessage.trim()}
+              onClick={() => {
+                startTransition(async () => {
+                  const result = await contactAttendees(course.id, contactSubject, contactMessage);
+                  setContactModalOpen(false);
+                  setContactSubject('');
+                  setContactMessage('');
+                  alert(`Email sent to ${result.sent} of ${result.total} attendees.`);
+                });
+              }}
+            >
+              {isPending ? 'Sending...' : 'Send Message'}
             </Button>
           </div>
         </div>

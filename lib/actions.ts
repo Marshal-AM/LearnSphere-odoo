@@ -400,6 +400,93 @@ export async function sendInvitation(courseId: string, email: string, message?: 
      VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '14 days')`,
     [courseId, email, session.user.id, message || null, token]
   );
+
+  // Send the actual email
+  try {
+    const { sendInvitationEmail } = await import('@/lib/email');
+    const { getUserById, getCourseById } = await import('@/lib/queries');
+
+    const [inviter, course] = await Promise.all([
+      getUserById(session.user.id),
+      getCourseById(courseId),
+    ]);
+
+    const inviterName = inviter
+      ? `${inviter.first_name} ${inviter.last_name}`
+      : 'An instructor';
+    const courseName = course?.title || 'a course';
+
+    await sendInvitationEmail({
+      to: email,
+      inviterName,
+      courseName,
+      token,
+      message: message || undefined,
+    });
+  } catch (err) {
+    console.error('Failed to send invitation email:', err);
+    // Don't throw — the invitation record was still created
+  }
+
+  revalidatePath(`/admin/courses/${courseId}`);
+}
+
+// =====================================================
+// CONTACT ATTENDEES ACTIONS
+// =====================================================
+export async function contactAttendees(courseId: string, subject: string, messageBody: string) {
+  const session = await getSession();
+  if (!session?.user) throw new Error('Unauthorized');
+
+  if (!subject.trim() || !messageBody.trim()) {
+    throw new Error('Subject and message are required');
+  }
+
+  // Get course info + sender info
+  const { getUserById, getCourseById } = await import('@/lib/queries');
+  const [sender, course] = await Promise.all([
+    getUserById(session.user.id),
+    getCourseById(courseId),
+  ]);
+
+  const senderName = sender
+    ? `${sender.first_name} ${sender.last_name}`
+    : 'Instructor';
+  const courseName = course?.title || 'a course';
+
+  // Get all enrolled learner emails for this course
+  const enrollees = await query<{ email: string }>(
+    `SELECT DISTINCT u.email
+     FROM course_enrollments e
+     JOIN users u ON e.user_id = u.id
+     WHERE e.course_id = $1 AND u.deleted_at IS NULL AND u.is_active = true`,
+    [courseId]
+  );
+
+  if (enrollees.length === 0) return { sent: 0 };
+
+  // Send emails (in parallel, batched)
+  const { sendContactEmail } = await import('@/lib/email');
+  let sent = 0;
+
+  await Promise.allSettled(
+    enrollees.map(async ({ email }) => {
+      try {
+        await sendContactEmail({
+          to: email,
+          senderName,
+          courseName,
+          subject: subject.trim(),
+          message: messageBody.trim(),
+        });
+        sent++;
+      } catch (err) {
+        console.error(`Failed to send contact email to ${email}:`, err);
+      }
+    })
+  );
+
+  return { sent, total: enrollees.length };
 }
 
 // =====================================================
