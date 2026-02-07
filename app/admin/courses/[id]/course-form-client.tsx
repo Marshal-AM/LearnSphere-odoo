@@ -764,18 +764,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                               />
                               <FieldError field="videoUrl" errors={lessonErrors} />
 
-                              {/* Show video preview when we have a direct upload URL */}
-                              {isDirectUpload && (
-                                <div className="rounded-lg overflow-hidden bg-black border border-gray-200">
-                                  <video
-                                    src={url}
-                                    controls
-                                    preload="metadata"
-                                    className="w-full max-h-[240px]"
-                                    playsInline
-                                  />
-                                </div>
-                              )}
+                              {/* Note: Video preview is shown by FileUpload when there's a direct upload — no duplicate here */}
 
                               {/* External URL input — only show when there is NO direct upload */}
                               {!isDirectUpload && (
@@ -912,18 +901,59 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                   <div className="pt-2 space-y-4">
                     <p className="text-sm text-gray-500">Add extra resources for learners (files or links).</p>
                     {lessonForm.attachments.map((att, idx) => (
-                      <div key={idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                        {att.type === 'file' ? <Upload className="w-4 h-4 text-gray-400" /> : <LinkIcon className="w-4 h-4 text-gray-400" />}
-                        <span className="text-sm flex-1">{att.title || att.url}</span>
-                        <button
-                          onClick={() => setLessonForm({
-                            ...lessonForm,
-                            attachments: lessonForm.attachments.filter((_, i) => i !== idx),
-                          })}
-                          className="text-red-400 hover:text-red-600 cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <div key={idx} className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          {att.type === 'file' ? <Upload className="w-4 h-4 text-gray-400 flex-shrink-0" /> : <LinkIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />}
+                          {att.type === 'link' ? (
+                            <div className="flex-1 space-y-2 min-w-0">
+                              <Input
+                                placeholder="Link title (e.g. Reference document)"
+                                value={att.title}
+                                onChange={e => {
+                                  const next = [...lessonForm.attachments];
+                                  next[idx] = { ...next[idx], title: e.target.value };
+                                  setLessonForm({ ...lessonForm, attachments: next });
+                                }}
+                                className="text-sm"
+                              />
+                              <Input
+                                placeholder="https://example.com"
+                                value={att.url}
+                                onChange={e => {
+                                  const next = [...lessonForm.attachments];
+                                  next[idx] = { ...next[idx], url: e.target.value };
+                                  setLessonForm({ ...lessonForm, attachments: next });
+                                }}
+                                className="text-sm"
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex-1 min-w-0">
+                              <FileUpload
+                                compact
+                                accept="*"
+                                maxSize={100 * 1024 * 1024}
+                                folder="courses/attachments"
+                                currentUrl={att.url}
+                                currentFilename={att.title || undefined}
+                                onUpload={(result) => {
+                                  const next = [...lessonForm.attachments];
+                                  next[idx] = { ...next[idx], url: result.url, title: result.filename };
+                                  setLessonForm({ ...lessonForm, attachments: next });
+                                }}
+                              />
+                            </div>
+                          )}
+                          <button
+                            onClick={() => setLessonForm({
+                              ...lessonForm,
+                              attachments: lessonForm.attachments.filter((_, i) => i !== idx),
+                            })}
+                            className="text-red-400 hover:text-red-600 cursor-pointer flex-shrink-0 p-1"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                     <div className="flex gap-2">
