@@ -1,5 +1,5 @@
 import { getCurrentUser } from '@/lib/auth';
-import { getEnrolledCourses, getAllTags } from '@/lib/queries';
+import { getEnrolledCourses, getAllTags, getInstructorInfoForCourses } from '@/lib/queries';
 import { redirect } from 'next/navigation';
 import MyCoursesClient from './my-courses-client';
 
@@ -14,6 +14,12 @@ export default async function MyCoursesPage() {
     getAllTags(),
   ]);
 
+  // Get instructor info (name + online status) for all enrolled courses
+  const courseIds = enrolledCourses.map(ec => ec.course_id);
+  const instructorInfo = courseIds.length > 0
+    ? await getInstructorInfoForCourses(courseIds)
+    : {};
+
   return (
     <MyCoursesClient
       user={{
@@ -27,6 +33,7 @@ export default async function MyCoursesPage() {
       }}
       enrolledCourses={enrolledCourses}
       tags={tags}
+      instructorInfo={instructorInfo}
     />
   );
 }

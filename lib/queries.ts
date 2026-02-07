@@ -384,6 +384,87 @@ export async function getCourseReviews(courseId: string): Promise<(CourseReview 
 }
 
 // =====================================================
+// INSTRUCTOR STATUS QUERIES
+// =====================================================
+export async function getInstructorStatus(userId: string): Promise<boolean> {
+  const row = await queryOne<{ is_active: boolean }>(
+    `SELECT is_active FROM instructor_status WHERE user_id = $1`,
+    [userId]
+  );
+  return row?.is_active ?? false;
+}
+
+export async function getInstructorStatusBatch(userIds: string[]): Promise<Record<string, boolean>> {
+  if (userIds.length === 0) return {};
+  const rows = await query<{ user_id: string; is_active: boolean }>(
+    `SELECT user_id, is_active FROM instructor_status WHERE user_id = ANY($1)`,
+    [userIds]
+  );
+  const map: Record<string, boolean> = {};
+  for (const uid of userIds) map[uid] = false;
+  for (const row of rows) map[row.user_id] = row.is_active;
+  return map;
+}
+
+export async function getInstructorInfoForCourses(courseIds: string[]): Promise<Record<string, { id: string; first_name: string; last_name: string; is_online: boolean }>> {
+  if (courseIds.length === 0) return {};
+  const rows = await query<{
+    course_id: string; instructor_id: string;
+    first_name: string; last_name: string; is_online: boolean;
+  }>(
+    `SELECT c.id as course_id, u.id as instructor_id,
+            u.first_name, u.last_name,
+            COALESCE(s.is_active, false) as is_online
+     FROM courses c
+     JOIN users u ON u.id = COALESCE(c.course_admin_id, c.created_by)
+     LEFT JOIN instructor_status s ON s.user_id = u.id
+     WHERE c.id = ANY($1)`,
+    [courseIds]
+  );
+  const map: Record<string, { id: string; first_name: string; last_name: string; is_online: boolean }> = {};
+  for (const row of rows) {
+    map[row.course_id] = {
+      id: row.instructor_id,
+      first_name: row.first_name,
+      last_name: row.last_name,
+      is_online: row.is_online,
+    };
+  }
+  return map;
+}
+
+// =====================================================
+// MEETING ROOM QUERIES
+// =====================================================
+export async function getActiveMeetingsForInstructor(instructorId: string) {
+  return query<{
+    id: string; room_name: string; room_url: string; course_id: string;
+    student_id: string; student_name: string; status: string; created_at: string;
+  }>(
+    `SELECT id, room_name, room_url, course_id, student_id, student_name,
+            status, created_at::text
+     FROM meeting_rooms
+     WHERE instructor_id = $1 AND status IN ('waiting', 'active')
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [instructorId]
+  );
+}
+
+export async function getMeetingByRoomName(roomName: string) {
+  return queryOne<{
+    id: string; room_name: string; room_url: string; course_id: string;
+    instructor_id: string; student_id: string; student_name: string;
+    status: string; created_at: string;
+  }>(
+    `SELECT id, room_name, room_url, course_id, instructor_id,
+            student_id, student_name, status, created_at::text
+     FROM meeting_rooms WHERE room_name = $1`,
+    [roomName]
+  );
+}
+
+// =====================================================
 // REPORTING QUERIES
 // =====================================================
 export async function getReportingData(): Promise<ReportingDashboardRow[]> {

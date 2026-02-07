@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { BookOpen, Clock, Trophy, ChevronRight, Star, Sparkles } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { BookOpen, Clock, Trophy, ChevronRight, Star, Sparkles, Video, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/ui/search-input';
@@ -11,6 +12,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { formatDuration } from '@/lib/utils';
 import { BADGE_LABELS, BADGE_COLORS, BADGE_THRESHOLDS, BadgeLevel, CourseEnrollment, Course, Tag } from '@/lib/types';
 import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 const badgeOrder: BadgeLevel[] = ['newbie', 'explorer', 'achiever', 'specialist', 'expert', 'master'];
 
@@ -22,6 +24,13 @@ interface UserInfo {
   total_points: number;
   current_badge: BadgeLevel;
   avatar_url?: string;
+}
+
+interface InstructorInfo {
+  id: string;
+  first_name: string;
+  last_name: string;
+  is_online: boolean;
 }
 
 const staggerContainer = {
@@ -37,12 +46,16 @@ export default function MyCoursesClient({
   user,
   enrolledCourses,
   tags: allTags,
+  instructorInfo,
 }: {
   user: UserInfo;
   enrolledCourses: (CourseEnrollment & { course: Course })[];
   tags: Tag[];
+  instructorInfo: Record<string, InstructorInfo>;
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState('');
+  const [meetingLoading, setMeetingLoading] = useState<string | null>(null);
 
   const filtered = enrolledCourses.filter(ec =>
     ec.course.title.toLowerCase().includes(search.toLowerCase())
@@ -54,6 +67,27 @@ export default function MyCoursesClient({
       case 'in_progress': return 'Continue';
       case 'completed': return 'Review';
       default: return 'View';
+    }
+  };
+
+  const handleStartMeeting = async (courseId: string, instructorId: string) => {
+    setMeetingLoading(courseId);
+    try {
+      const res = await fetch('/api/meetings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courseId, instructorId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.roomUrl) {
+        router.push(`/meeting?roomUrl=${encodeURIComponent(data.roomUrl)}`);
+      } else {
+        alert(data.error || 'Failed to create meeting');
+      }
+    } catch {
+      alert('Network error. Please try again.');
+    } finally {
+      setMeetingLoading(null);
     }
   };
 
@@ -83,65 +117,117 @@ export default function MyCoursesClient({
             animate="animate"
             variants={staggerContainer}
           >
-            {filtered.map(({ course, ...enrollment }) => (
-              <motion.div
-                key={enrollment.id}
-                variants={fadeInUp}
-                className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden card-hover"
-              >
-                {/* Cover image */}
-                <div className="relative h-36 bg-gradient-to-br from-primary/10 to-indigo-100 overflow-hidden">
-                  {course.cover_image_url && (
-                    <img
-                      src={course.cover_image_url}
-                      alt={course.title}
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                  {enrollment.status === 'completed' && (
-                    <div className="absolute inset-0 bg-emerald-900/30 backdrop-blur-[1px] flex items-center justify-center">
-                      <Badge variant="success" className="text-sm px-4 py-1.5 rounded-2xl">✓ Completed</Badge>
-                    </div>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="p-5">
-                  <h3 className="text-base font-semibold text-gray-900 line-clamp-1">{course.title}</h3>
-                  <p className="text-sm text-gray-500 mt-1 line-clamp-2">{course.short_description}</p>
-
-                  {/* Tags */}
-                  {course.tags && course.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-3">
-                      {course.tags.slice(0, 3).map(tag => {
-                        const tagObj = allTags.find(t => t.name === tag);
-                        return <Badge key={tag} color={tagObj?.color} className="text-xs">{tag}</Badge>;
-                      })}
-                    </div>
-                  )}
-
-                  {/* Progress */}
-                  {enrollment.status !== 'yet_to_start' && (
-                    <div className="mt-4">
-                      <ProgressBar value={enrollment.completion_percentage} showLabel size="sm" />
-                    </div>
-                  )}
-
-                  {/* Action */}
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="text-xs text-gray-400">
-                      {enrollment.completed_lessons}/{enrollment.total_lessons} lessons
-                    </span>
-                    <Link href={`/courses/${course.slug}`}>
-                      <Button size="sm" variant={enrollment.status === 'completed' ? 'outline' : 'primary'}>
-                        {getButtonLabel(enrollment.status)}
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
-                    </Link>
+            {filtered.map(({ course, ...enrollment }) => {
+              const instructor = instructorInfo[enrollment.course_id];
+              return (
+                <motion.div
+                  key={enrollment.id}
+                  variants={fadeInUp}
+                  className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden card-hover"
+                >
+                  {/* Cover image */}
+                  <div className="relative h-36 bg-gradient-to-br from-primary/10 to-indigo-100 overflow-hidden">
+                    {course.cover_image_url && (
+                      <img
+                        src={course.cover_image_url}
+                        alt={course.title}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    {enrollment.status === 'completed' && (
+                      <div className="absolute inset-0 bg-emerald-900/30 backdrop-blur-[1px] flex items-center justify-center">
+                        <Badge variant="success" className="text-sm px-4 py-1.5 rounded-2xl">✓ Completed</Badge>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </motion.div>
-            ))}
+
+                  {/* Content */}
+                  <div className="p-5">
+                    <h3 className="text-base font-semibold text-gray-900 line-clamp-1">{course.title}</h3>
+                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">{course.short_description}</p>
+
+                    {/* Tags */}
+                    {course.tags && course.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-3">
+                        {course.tags.slice(0, 3).map(tag => {
+                          const tagObj = allTags.find(t => t.name === tag);
+                          return <Badge key={tag} color={tagObj?.color} className="text-xs">{tag}</Badge>;
+                        })}
+                      </div>
+                    )}
+
+                    {/* Instructor status */}
+                    {instructor && (
+                      <div className="mt-4 flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <div className="flex items-center gap-2.5">
+                          <div className="relative">
+                            <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-lg flex items-center justify-center text-white text-xs font-bold">
+                              {instructor.first_name[0]}{instructor.last_name[0]}
+                            </div>
+                            {/* Status dot */}
+                            <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
+                              {instructor.is_online && (
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                              )}
+                              <span className={cn(
+                                'relative inline-flex rounded-full h-3 w-3 border-2 border-gray-50',
+                                instructor.is_online ? 'bg-emerald-500' : 'bg-red-400'
+                              )} />
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-gray-700">
+                              {instructor.first_name} {instructor.last_name}
+                            </p>
+                            <p className={cn(
+                              'text-[10px] font-medium',
+                              instructor.is_online ? 'text-emerald-600' : 'text-gray-400'
+                            )}>
+                              {instructor.is_online ? 'Online' : 'Offline'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {instructor.is_online && (
+                          <button
+                            onClick={() => handleStartMeeting(enrollment.course_id, instructor.id)}
+                            disabled={meetingLoading === enrollment.course_id}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-semibold rounded-lg hover:shadow-md hover:shadow-emerald-500/25 transition-all duration-200 cursor-pointer disabled:opacity-60"
+                          >
+                            {meetingLoading === enrollment.course_id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Video className="w-3.5 h-3.5" />
+                            )}
+                            {meetingLoading === enrollment.course_id ? 'Connecting...' : 'Start Meeting'}
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Progress */}
+                    {enrollment.status !== 'yet_to_start' && (
+                      <div className="mt-4">
+                        <ProgressBar value={enrollment.completion_percentage} showLabel size="sm" />
+                      </div>
+                    )}
+
+                    {/* Action */}
+                    <div className="mt-4 flex items-center justify-between">
+                      <span className="text-xs text-gray-400">
+                        {enrollment.completed_lessons}/{enrollment.total_lessons} lessons
+                      </span>
+                      <Link href={`/courses/${course.slug}`}>
+                        <Button size="sm" variant={enrollment.status === 'completed' ? 'outline' : 'primary'}>
+                          {getButtonLabel(enrollment.status)}
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
           </motion.div>
 
           {filtered.length === 0 && (

@@ -7,6 +7,7 @@ import {
   ArrowLeft, ChevronLeft, ChevronRight, CheckCircle2, Circle,
   PlayCircle, Menu, X, FileText, Image as ImageIcon, HelpCircle,
   Video, Download, ExternalLink, Trophy, PartyPopper, XCircle,
+  Bot, Send, Loader2, MessageSquare, Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -80,6 +81,16 @@ export default function LessonPlayerClient({
   const [pointsPopup, setPointsPopup] = useState<{ show: boolean; points: number }>({ show: false, points: 0 });
   const [showCourseComplete, setShowCourseComplete] = useState(false);
 
+  // AI Assist state
+  const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiMessages, setAiMessages] = useState<{ role: 'user' | 'ai'; text: string }[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  // AI Evaluate state (per question)
+  const [aiExplanations, setAiExplanations] = useState<Record<string, string>>({});
+  const [aiExplainLoading, setAiExplainLoading] = useState<Record<string, boolean>>({});
+
   const prevLesson = currentIndex > 0 ? courseLessons[currentIndex - 1] : null;
   const nextLesson = currentIndex < courseLessons.length - 1 ? courseLessons[currentIndex + 1] : null;
 
@@ -140,6 +151,60 @@ export default function LessonPlayerClient({
 
   const handleCompleteThisCourse = () => setShowCourseComplete(true);
   const isCurrentLessonComplete = getLessonStatus(currentLesson.id) === 'completed';
+
+  /** AI Assist: Send a query via our proxy route */
+  const handleAiAssist = async () => {
+    if (!aiQuery.trim() || aiLoading) return;
+    const query = aiQuery.trim();
+    setAiMessages(prev => [...prev, { role: 'user', text: query }]);
+    setAiQuery('');
+    setAiLoading(true);
+    try {
+      const res = await fetch('/api/ai/assist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+      });
+      const data = await res.json();
+      if (res.ok && data.answer) {
+        setAiMessages(prev => [...prev, { role: 'ai', text: data.answer }]);
+      } else {
+        setAiMessages(prev => [...prev, { role: 'ai', text: data.detail || 'Sorry, I could not process your request.' }]);
+      }
+    } catch {
+      setAiMessages(prev => [...prev, { role: 'ai', text: 'Network error. Please try again.' }]);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  /** AI Evaluate: Get explanation via our proxy route */
+  const handleAiEvaluate = async (qr: QuizQuestionResult) => {
+    if (aiExplainLoading[qr.questionId]) return;
+    setAiExplainLoading(prev => ({ ...prev, [qr.questionId]: true }));
+    try {
+      const correctOpt = qr.options.find(o => qr.correctAnswerIds.includes(o.id));
+      const res = await fetch('/api/ai/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: qr.questionText,
+          options: qr.options.map(o => o.text),
+          correct_answer: correctOpt?.text || '',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.explanation) {
+        setAiExplanations(prev => ({ ...prev, [qr.questionId]: data.explanation }));
+      } else {
+        setAiExplanations(prev => ({ ...prev, [qr.questionId]: data.detail || 'Could not generate explanation.' }));
+      }
+    } catch {
+      setAiExplanations(prev => ({ ...prev, [qr.questionId]: 'Network error. Please try again.' }));
+    } finally {
+      setAiExplainLoading(prev => ({ ...prev, [qr.questionId]: false }));
+    }
+  };
   const isLastLessonCompleted = completedCount >= courseLessons.length - 1;
   const currentQ = quizQuestionsList[currentQuestionIndex];
 
@@ -428,8 +493,34 @@ export default function LessonPlayerClient({
                                   );
                                 })}
                               </div>
+                              {/* Existing explanation */}
                               {qr.explanation && (
                                 <div className="ml-8 mt-3 p-3 bg-white/60 rounded-xl"><p className="text-xs text-gray-600"><span className="font-medium">Explanation:</span> {qr.explanation}</p></div>
+                              )}
+
+                              {/* AI-generated explanation */}
+                              {aiExplanations[qr.questionId] ? (
+                                <div className="ml-8 mt-3 p-3 bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-100 rounded-xl">
+                                  <div className="flex items-center gap-1.5 mb-1.5">
+                                    <Bot className="w-3.5 h-3.5 text-violet-600" />
+                                    <span className="text-xs font-semibold text-violet-700">AI Explanation</span>
+                                  </div>
+                                  <p className="text-xs text-gray-700 leading-relaxed">{aiExplanations[qr.questionId]}</p>
+                                </div>
+                              ) : (
+                                <div className="ml-8 mt-3">
+                                  <button
+                                    onClick={() => handleAiEvaluate(qr)}
+                                    disabled={aiExplainLoading[qr.questionId]}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                                  >
+                                    {aiExplainLoading[qr.questionId] ? (
+                                      <><Loader2 className="w-3 h-3 animate-spin" /> Thinking...</>
+                                    ) : (
+                                      <><Bot className="w-3 h-3" /> Ask AI</>
+                                    )}
+                                  </button>
+                                </div>
                               )}
                             </div>
                           ))}
@@ -486,6 +577,101 @@ export default function LessonPlayerClient({
             </motion.div>
           </div>
         </div>
+      </div>
+
+      {/* ─── AI Assist Floating Chat ─── */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+        <AnimatePresence>
+          {aiChatOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              className="w-[380px] max-h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
+            >
+              {/* Chat Header */}
+              <div className="flex items-center gap-3 p-4 border-b border-gray-100 bg-gradient-to-r from-violet-50 to-indigo-50">
+                <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-md shadow-violet-500/20">
+                  <Bot className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-900">AI Assistant</p>
+                  <p className="text-[10px] text-gray-500">Ask anything about this course</p>
+                </div>
+                <button onClick={() => setAiChatOpen(false)} className="p-1.5 hover:bg-white/80 rounded-lg transition-colors cursor-pointer">
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
+              </div>
+
+              {/* Chat Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px] max-h-[340px]">
+                {aiMessages.length === 0 && (
+                  <div className="text-center py-8 text-gray-400">
+                    <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                    <p className="text-sm">Ask me anything about your course materials!</p>
+                  </div>
+                )}
+                {aiMessages.map((msg, i) => (
+                  <div key={i} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                    <div className={cn(
+                      'max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
+                      msg.role === 'user'
+                        ? 'bg-gradient-to-r from-primary to-indigo-600 text-white rounded-br-md'
+                        : 'bg-gray-100 text-gray-800 rounded-bl-md'
+                    )}>
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+                {aiLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-gray-100 rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-2">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-500" />
+                      <span className="text-sm text-gray-500">Thinking...</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Chat Input */}
+              <div className="p-3 border-t border-gray-100">
+                <form
+                  onSubmit={e => { e.preventDefault(); handleAiAssist(); }}
+                  className="flex items-center gap-2"
+                >
+                  <input
+                    type="text"
+                    value={aiQuery}
+                    onChange={e => setAiQuery(e.target.value)}
+                    placeholder="Type your question..."
+                    className="flex-1 px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-gray-50 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50"
+                    disabled={aiLoading}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!aiQuery.trim() || aiLoading}
+                    className="p-2.5 bg-gradient-to-r from-primary to-indigo-600 text-white rounded-xl hover:shadow-md hover:shadow-primary/20 transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </form>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Floating AI button */}
+        <button
+          onClick={() => setAiChatOpen(!aiChatOpen)}
+          className={cn(
+            'w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-300 cursor-pointer',
+            aiChatOpen
+              ? 'bg-gray-200 text-gray-600 shadow-md'
+              : 'bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-xl shadow-violet-500/30 hover:shadow-2xl hover:shadow-violet-500/40 hover:scale-105'
+          )}
+        >
+          {aiChatOpen ? <X className="w-5 h-5" /> : <Bot className="w-6 h-6" />}
+        </button>
       </div>
 
       {/* Points Popup */}

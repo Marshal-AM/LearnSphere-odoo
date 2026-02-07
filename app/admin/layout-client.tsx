@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect, useCallback } from 'react';
 import {
   GraduationCap, BookOpen, BarChart3, LogOut, Bell,
   User as UserIcon, Settings, ChevronsUpDown, Globe,
-  Sparkles,
+  Sparkles, Video,
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils';
@@ -48,13 +48,62 @@ interface AdminUser {
   avatar_url?: string;
 }
 
-const navigation = [
-  { name: 'Courses', href: '/admin/courses', icon: BookOpen },
-  { name: 'Reporting', href: '/admin/reporting', icon: BarChart3 },
-];
-
 export default function AdminLayoutClient({ children, user }: { children: ReactNode; user: AdminUser }) {
   const pathname = usePathname();
+  const isInstructor = user.roles.includes('instructor') || user.roles.includes('admin');
+
+  // Instructor online status
+  const [isOnline, setIsOnline] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [activeMeetingCount, setActiveMeetingCount] = useState(0);
+
+  // Fetch initial status
+  useEffect(() => {
+    if (!isInstructor) return;
+    fetch('/api/instructor/status')
+      .then(r => r.json())
+      .then(data => setIsOnline(data.isActive ?? false))
+      .catch(() => {});
+  }, [isInstructor]);
+
+  // Poll for active meetings when instructor is online
+  useEffect(() => {
+    if (!isInstructor || !isOnline) {
+      setActiveMeetingCount(0);
+      return;
+    }
+    const poll = () => {
+      fetch('/api/meetings/instructor')
+        .then(r => r.json())
+        .then(data => setActiveMeetingCount(data.meetings?.length ?? 0))
+        .catch(() => {});
+    };
+    poll();
+    const interval = setInterval(poll, 8000);
+    return () => clearInterval(interval);
+  }, [isInstructor, isOnline]);
+
+  const toggleStatus = useCallback(async () => {
+    setStatusLoading(true);
+    try {
+      const res = await fetch('/api/instructor/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !isOnline }),
+      });
+      const data = await res.json();
+      setIsOnline(data.isActive ?? false);
+    } catch { }
+    setStatusLoading(false);
+  }, [isOnline]);
+
+  const navigation = [
+    { name: 'Courses', href: '/admin/courses', icon: BookOpen },
+    { name: 'Reporting', href: '/admin/reporting', icon: BarChart3 },
+    ...(isInstructor
+      ? [{ name: 'Meetings', href: '/admin/meetings', icon: Video }]
+      : []),
+  ];
 
   return (
     <SidebarProvider>
@@ -101,12 +150,18 @@ export default function AdminLayoutClient({ children, user }: { children: ReactN
                       >
                         <Link href={item.href}>
                           <div className={cn(
-                            'flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200',
+                            'relative flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200',
                             isActive
                               ? 'bg-gradient-to-br from-primary to-indigo-600 text-white shadow-md shadow-primary/30'
                               : 'text-sidebar-foreground/60'
                           )}>
                             <item.icon className="w-[18px] h-[18px]" />
+                            {/* Badge for meetings nav item */}
+                            {item.name === 'Meetings' && activeMeetingCount > 0 && (
+                              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-sidebar-bg">
+                                {activeMeetingCount}
+                              </span>
+                            )}
                           </div>
                           <span>{item.name}</span>
                           {isActive && (
@@ -214,16 +269,46 @@ export default function AdminLayoutClient({ children, user }: { children: ReactN
           <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground" />
           <Separator orientation="vertical" className="mx-1 h-4" />
 
-          {/* Breadcrumb area - can be extended */}
+          {/* Breadcrumb area */}
           <div className="flex-1" />
 
-          {/* Notifications */}
-          <button className="relative p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent transition-colors cursor-pointer">
-            <Bell className="w-4.5 h-4.5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-background" />
-          </button>
+          {/* Instructor status toggle (replaces bell for instructors) */}
+          {isInstructor ? (
+            <button
+              onClick={toggleStatus}
+              disabled={statusLoading}
+              className={cn(
+                'relative flex items-center gap-2.5 px-4 py-2 rounded-xl border transition-all duration-300 cursor-pointer',
+                isOnline
+                  ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100'
+                  : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+              )}
+            >
+              {/* Glow dot */}
+              <span className="relative flex h-3 w-3">
+                {isOnline && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                )}
+                <span className={cn(
+                  'relative inline-flex rounded-full h-3 w-3',
+                  isOnline ? 'bg-emerald-500' : 'bg-red-400'
+                )} />
+              </span>
+              <span className={cn(
+                'text-sm font-medium',
+                isOnline ? 'text-emerald-700' : 'text-gray-500'
+              )}>
+                {statusLoading ? 'Updating...' : isOnline ? 'Active' : 'Inactive'}
+              </span>
+            </button>
+          ) : (
+            <button className="relative p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent transition-colors cursor-pointer">
+              <Bell className="w-4.5 h-4.5" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-background" />
+            </button>
+          )}
 
-          {/* Top-bar user dropdown (for quick access) */}
+          {/* Top-bar user dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-accent transition-colors cursor-pointer">

@@ -4,9 +4,9 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, Trash2, Check, Trophy, GripVertical, Save, Sparkles } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Check, Trophy, GripVertical, Save, Sparkles, Bot, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input, Textarea } from '@/components/ui/input';
+import { Input, Textarea, Select } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { cn } from '@/lib/utils';
 import { createQuiz, saveQuizQuestions } from '@/lib/actions';
@@ -52,6 +52,13 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
     third: quiz?.points_third_attempt?.toString() || '5',
     fourth: quiz?.points_fourth_plus_attempt?.toString() || '2',
   });
+
+  // AI Generation state
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiNumQuestions, setAiNumQuestions] = useState('5');
+  const [aiDifficulty, setAiDifficulty] = useState('medium');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   const currentQ = questions[selectedQuestion];
 
@@ -161,6 +168,70 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
     });
   };
 
+  /** Generate quiz questions using AI */
+  const handleAiGenerate = async () => {
+    setAiLoading(true);
+    setAiError('');
+
+    try {
+      const res = await fetch('/api/ai/generate-quiz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courseId,
+          num_questions: parseInt(aiNumQuestions) || 5,
+          difficulty: aiDifficulty,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setAiError(data.error || 'Failed to generate quiz');
+        return;
+      }
+
+      // Map AI response to our question format
+      const generatedQuestions = data.questions.map((q: any, idx: number) => {
+        // Parse options from "A) text" format into {id, text} pairs
+        const options: QuizOption[] = q.options.map((optText: string, optIdx: number) => {
+          const id = String.fromCharCode(97 + optIdx); // a, b, c, d
+          return { id, text: optText };
+        });
+
+        // Find the correct answer option ID
+        const correctIds: string[] = [];
+        const correctAnswer = q.correct_answer || '';
+        options.forEach((opt: QuizOption) => {
+          if (opt.text.trim() === correctAnswer.trim()) {
+            correctIds.push(opt.id);
+          }
+        });
+
+        return {
+          id: (idx + 1).toString(),
+          text: q.question,
+          options,
+          correctIds,
+        };
+      });
+
+      if (generatedQuestions.length > 0) {
+        setQuestions(generatedQuestions);
+        setSelectedQuestion(0);
+        if (data.topic) {
+          setQuizTitle(data.topic);
+        }
+      }
+
+      setAiModalOpen(false);
+    } catch (err: any) {
+      setAiError(err?.message || 'Network error');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div>
       {/* Header */}
@@ -186,10 +257,16 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
             />
           </div>
         </div>
-        <Button onClick={handleSave} disabled={isPending}>
-          <Sparkles className="w-4 h-4" />
-          {isPending ? 'Saving...' : 'Save Quiz'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setAiModalOpen(true)}>
+            <Bot className="w-4 h-4" />
+            Generate with AI
+          </Button>
+          <Button onClick={handleSave} disabled={isPending}>
+            <Sparkles className="w-4 h-4" />
+            {isPending ? 'Saving...' : 'Save Quiz'}
+          </Button>
+        </div>
       </motion.div>
 
       <div className="flex gap-6">
@@ -329,37 +406,72 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
       <Modal isOpen={rewardsOpen} onClose={() => setRewardsOpen(false)} title="Quiz Rewards" size="sm">
         <div className="p-6 space-y-4">
           <p className="text-sm text-gray-600">Set points based on attempt number:</p>
-          <Input
-            label="First attempt"
-            type="number"
-            value={rewards.first}
-            onChange={e => setRewards({ ...rewards, first: e.target.value })}
-            placeholder="10"
-          />
-          <Input
-            label="Second attempt"
-            type="number"
-            value={rewards.second}
-            onChange={e => setRewards({ ...rewards, second: e.target.value })}
-            placeholder="7"
-          />
-          <Input
-            label="Third attempt"
-            type="number"
-            value={rewards.third}
-            onChange={e => setRewards({ ...rewards, third: e.target.value })}
-            placeholder="5"
-          />
-          <Input
-            label="Fourth attempt and more"
-            type="number"
-            value={rewards.fourth}
-            onChange={e => setRewards({ ...rewards, fourth: e.target.value })}
-            placeholder="2"
-          />
+          <Input label="First attempt" type="number" value={rewards.first} onChange={e => setRewards({ ...rewards, first: e.target.value })} placeholder="10" />
+          <Input label="Second attempt" type="number" value={rewards.second} onChange={e => setRewards({ ...rewards, second: e.target.value })} placeholder="7" />
+          <Input label="Third attempt" type="number" value={rewards.third} onChange={e => setRewards({ ...rewards, third: e.target.value })} placeholder="5" />
+          <Input label="Fourth attempt and more" type="number" value={rewards.fourth} onChange={e => setRewards({ ...rewards, fourth: e.target.value })} placeholder="2" />
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="outline" onClick={() => setRewardsOpen(false)}>Cancel</Button>
             <Button onClick={() => setRewardsOpen(false)}>Save Rewards</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* AI Generate Modal */}
+      <Modal isOpen={aiModalOpen} onClose={() => { setAiModalOpen(false); setAiError(''); }} title="Generate Quiz with AI" size="sm">
+        <div className="p-6 space-y-5">
+          <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-violet-50 to-indigo-50 rounded-2xl border border-violet-100">
+            <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-violet-500/20">
+              <Bot className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">AI Quiz Generator</p>
+              <p className="text-xs text-gray-500">Generates questions from your course materials (documents & images)</p>
+            </div>
+          </div>
+
+          <Input
+            label="Number of Questions"
+            type="number"
+            value={aiNumQuestions}
+            onChange={e => setAiNumQuestions(e.target.value)}
+            placeholder="5"
+          />
+
+          <Select
+            label="Difficulty Level"
+            value={aiDifficulty}
+            onChange={e => setAiDifficulty(e.target.value)}
+            options={[
+              { value: 'easy', label: 'Easy' },
+              { value: 'medium', label: 'Medium' },
+              { value: 'hard', label: 'Hard' },
+            ]}
+          />
+
+          {aiError && (
+            <div className="p-3 bg-red-50 border border-red-100 rounded-xl">
+              <p className="text-sm text-red-700">{aiError}</p>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => { setAiModalOpen(false); setAiError(''); }} disabled={aiLoading}>
+              Cancel
+            </Button>
+            <Button onClick={handleAiGenerate} disabled={aiLoading}>
+              {aiLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Generate
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </Modal>
