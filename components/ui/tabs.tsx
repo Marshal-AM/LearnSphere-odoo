@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useId } from 'react';
 import { motion } from 'framer-motion';
 
 interface Tab {
@@ -19,13 +19,12 @@ interface TabsProps {
 
 export function Tabs({ tabs, defaultTab, className, onChange }: TabsProps) {
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id);
+  const layoutId = useId();
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
     onChange?.(tabId);
   };
-
-  const activeContent = tabs.find(t => t.id === activeTab)?.content;
 
   return (
     <div className={className}>
@@ -45,7 +44,7 @@ export function Tabs({ tabs, defaultTab, className, onChange }: TabsProps) {
           >
             {activeTab === tab.id && (
               <motion.div
-                layoutId="activeTab"
+                layoutId={`tab-indicator-${layoutId}`}
                 className="absolute inset-0 bg-white rounded-xl shadow-sm"
                 transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
               />
@@ -54,15 +53,15 @@ export function Tabs({ tabs, defaultTab, className, onChange }: TabsProps) {
           </button>
         ))}
       </div>
-      <motion.div
-        key={activeTab}
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2 }}
-        className="pt-6"
-      >
-        {activeContent}
-      </motion.div>
+      {/* Render all tabs; show/hide via CSS to prevent scroll jumps on switch */}
+      {tabs.map(tab => (
+        <div
+          key={tab.id}
+          className={cn('pt-6', tab.id !== activeTab && 'hidden')}
+        >
+          {tab.content}
+        </div>
+      ))}
     </div>
   );
 }

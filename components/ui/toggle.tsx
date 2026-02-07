@@ -21,7 +21,7 @@ export function Toggle({ checked, onChange, label, description, disabled }: Togg
         onClick={() => !disabled && onChange(!checked)}
         className={cn(
           'relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 cursor-pointer',
-          checked ? 'bg-gradient-to-r from-primary to-indigo-600' : 'bg-gray-300'
+          checked ? 'bg-primary' : 'bg-gray-300'
         )}
       >
         <span

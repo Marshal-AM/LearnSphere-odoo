@@ -27,7 +27,7 @@ export function ProgressBar({ value, className, showLabel = false, size = 'md', 
           initial={{ width: 0 }}
           animate={{ width: `${clampedValue}%` }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
-          className={cn('h-full rounded-full', !color && 'bg-gradient-to-r from-primary to-indigo-500')}
+          className={cn('h-full rounded-full', !color && 'bg-primary')}
           style={color ? { backgroundColor: color } : undefined}
         />
       </div>

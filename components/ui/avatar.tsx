@@ -16,7 +16,7 @@ const sizeMap = {
 };
 
 const colorPalette = [
-  'bg-gradient-to-br from-violet-500 to-purple-600',
+  'bg-primary',
   'bg-gradient-to-br from-blue-500 to-cyan-600',
   'bg-gradient-to-br from-emerald-500 to-teal-600',
   'bg-gradient-to-br from-amber-500 to-orange-600',

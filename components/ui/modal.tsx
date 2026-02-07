@@ -51,7 +51,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', className
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className={cn(
-              'relative w-full mx-4 bg-white rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto',
+              'relative w-full mx-4 bg-white rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]',
               sizeStyles[size],
               className
             )}

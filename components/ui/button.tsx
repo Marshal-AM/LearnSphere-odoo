@@ -10,13 +10,13 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:brightness-110 active:scale-[0.97]",
+          "bg-primary text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:brightness-110 active:scale-[0.97]",
         primary:
-          "bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:brightness-110 active:scale-[0.97]",
+          "bg-primary text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:brightness-110 active:scale-[0.97]",
         destructive:
-          "bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 hover:brightness-110 active:scale-[0.97]",
+          "bg-destructive text-white shadow-md shadow-destructive/20 hover:shadow-lg hover:shadow-destructive/30 hover:brightness-110 active:scale-[0.97]",
         danger:
-          "bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 hover:brightness-110 active:scale-[0.97]",
+          "bg-destructive text-white shadow-md shadow-destructive/20 hover:shadow-lg hover:shadow-destructive/30 hover:brightness-110 active:scale-[0.97]",
         outline:
           "border border-border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground active:scale-[0.97]",
         secondary:

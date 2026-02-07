@@ -313,7 +313,7 @@ export function FileUpload({
             <p className="text-sm text-gray-600">Uploading… {progress}%</p>
             <div className="mt-2 w-full bg-gray-200 rounded-full h-1.5">
               <div
-                className="bg-gradient-to-r from-primary to-indigo-500 h-1.5 rounded-full transition-all duration-300"
+                className="bg-primary h-1.5 rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
