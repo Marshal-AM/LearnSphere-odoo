@@ -81,7 +81,7 @@ export default function ChooseRolePage() {
       >
         {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary to-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-primary/20">
+          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-md shadow-primary/20">
             <GraduationCap className="w-6 h-6 text-white" />
           </div>
           <span className="text-2xl font-bold text-gray-900">LearnSphere</span>
@@ -115,7 +115,7 @@ export default function ChooseRolePage() {
                   className={cn(
                     'absolute top-4 right-4 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300',
                     isSelected
-                      ? 'border-primary bg-gradient-to-br from-primary to-indigo-600'
+                      ? 'border-primary bg-primary'
                       : 'border-gray-300'
                   )}
                 >
@@ -132,7 +132,7 @@ export default function ChooseRolePage() {
                   className={cn(
                     'w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-all duration-300',
                     isSelected
-                      ? 'bg-gradient-to-br from-primary to-indigo-600 text-white shadow-lg shadow-primary/20'
+                      ? 'bg-primary text-white shadow-lg shadow-primary/20'
                       : 'bg-gray-100 text-gray-400'
                   )}
                 >

@@ -276,7 +276,7 @@ function HairCheck({ joinCall, cancelCall }: { joinCall: (name: string) => void;
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-3 bg-gradient-to-r from-primary to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-primary/30 transition-all font-semibold cursor-pointer"
+              className="flex-1 px-4 py-3 bg-primary text-white rounded-xl hover:shadow-lg hover:shadow-primary/30 transition-all font-semibold cursor-pointer"
             >
               Join Call
             </button>
@@ -354,7 +354,7 @@ function VideoTile({
     >
       {videoState.isOff ? (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white text-xl font-bold">
+          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-white text-xl font-bold">
             {(username || 'G')[0].toUpperCase()}
           </div>
         </div>

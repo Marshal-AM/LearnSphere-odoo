@@ -92,7 +92,7 @@ export default function CourseDetailClient({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-primary-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-primary/10"
+          className="bg-primary-50 rounded-2xl p-6 mb-6 border border-primary/10"
         >
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-gray-900">Your Progress</h3>
@@ -252,7 +252,7 @@ export default function CourseDetailClient({
       >
         {/* Cover image */}
         <div className="lg:w-96 flex-shrink-0">
-          <div className="rounded-3xl overflow-hidden bg-gradient-to-br from-primary/10 to-indigo-100 aspect-video lg:aspect-[4/3] shadow-sm">
+          <div className="rounded-3xl overflow-hidden bg-primary/10 aspect-video lg:aspect-[4/3] shadow-sm">
             {course.cover_image_url && (
               <img
                 src={course.cover_image_url}

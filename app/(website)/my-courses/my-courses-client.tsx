@@ -126,7 +126,7 @@ export default function MyCoursesClient({
                   className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden card-hover"
                 >
                   {/* Cover image */}
-                  <div className="relative h-36 bg-gradient-to-br from-primary/10 to-indigo-100 overflow-hidden">
+                  <div className="relative h-36 bg-primary/10 overflow-hidden">
                     {course.cover_image_url && (
                       <img
                         src={course.cover_image_url}
@@ -161,7 +161,7 @@ export default function MyCoursesClient({
                       <div className="mt-4 flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
                         <div className="flex items-center gap-2.5">
                           <div className="relative">
-                            <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-lg flex items-center justify-center text-white text-xs font-bold">
+                            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white text-xs font-bold">
                               {instructor.first_name[0]}{instructor.last_name[0]}
                             </div>
                             {/* Status dot */}

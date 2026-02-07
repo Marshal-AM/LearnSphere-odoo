@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { BookOpen, GraduationCap, Trophy, BarChart3, ArrowRight, Sparkles, Zap, Star } from 'lucide-react';
+import { BookOpen, GraduationCap, Trophy, BarChart3, ArrowRight, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const fadeInUp = {
@@ -28,7 +28,7 @@ export default function Home() {
       <header className="border-b border-gray-100 bg-white/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-gradient-to-br from-primary to-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-primary/20">
+            <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-md shadow-primary/20">
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold text-gray-900">LearnSphere</span>
@@ -42,7 +42,7 @@ export default function Home() {
             </Link>
             <Link
               href="/register"
-              className="px-5 py-2 text-sm font-medium bg-gradient-to-r from-primary to-indigo-600 text-white rounded-2xl hover:from-primary-dark hover:to-indigo-700 transition-all duration-300 shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
+              className="px-5 py-2 text-sm font-medium bg-primary text-white rounded-2xl hover:brightness-110 transition-all duration-300 shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
             >
               Get Started
             </Link>
@@ -59,8 +59,7 @@ export default function Home() {
           variants={staggerContainer}
         >
           <motion.div variants={fadeInUp}>
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-50 to-indigo-50 text-primary-700 rounded-2xl text-sm font-medium mb-6 border border-primary/10">
-              <Sparkles className="w-4 h-4" />
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-50 text-primary-700 rounded-2xl text-sm font-medium mb-6 border border-primary/10">
               Gamified Learning Experience
             </div>
           </motion.div>
@@ -84,7 +83,7 @@ export default function Home() {
           >
             <Link
               href="/courses"
-              className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-gradient-to-r from-primary to-indigo-600 text-white rounded-2xl font-semibold text-base hover:from-primary-dark hover:to-indigo-700 transition-all duration-300 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 active:scale-[0.97]"
+              className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-primary text-white rounded-2xl font-semibold text-base hover:brightness-110 transition-all duration-300 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 active:scale-[0.97]"
             >
               Browse Courses
               <ArrowRight className="w-5 h-5" />
@@ -132,9 +131,9 @@ export default function Home() {
             },
             {
               icon: BarChart3,
-              title: 'Reporting',
+              title: 'Student Details',
               description: 'Instructors get detailed analytics on learner engagement.',
-              gradient: 'from-violet-500 to-purple-500',
+              gradient: 'from-primary to-primary',
               bg: 'bg-violet-50',
             },
           ].map((feature) => (
@@ -162,7 +161,7 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="overflow-hidden rounded-3xl bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 p-8 sm:p-12 text-white relative"
+          className="overflow-hidden rounded-3xl bg-primary p-8 sm:p-12 text-white relative"
         >
           {/* Decorative circles */}
           <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
@@ -175,9 +174,9 @@ export default function Home() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 relative">
             {[
               { label: 'Admin Dashboard', href: '/admin/courses', desc: 'Manage courses', icon: Zap },
-              { label: 'Reporting', href: '/admin/reporting', desc: 'View analytics', icon: BarChart3 },
+              { label: 'Student Details', href: '/admin/reporting', desc: 'View analytics', icon: BarChart3 },
               { label: 'Browse Courses', href: '/courses', desc: 'Find courses', icon: BookOpen },
-              { label: 'My Learning', href: '/my-courses', desc: 'Continue learning', icon: Star },
+              { label: 'My Learning', href: '/my-courses', desc: 'Continue learning', icon: BookOpen },
             ].map((link) => (
               <Link
                 key={link.href}
@@ -197,7 +196,7 @@ export default function Home() {
       <footer className="border-t border-gray-100 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-gradient-to-br from-primary to-indigo-600 rounded-lg flex items-center justify-center">
+            <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
               <GraduationCap className="w-4 h-4 text-white" />
             </div>
             <span className="text-sm font-semibold text-gray-900">LearnSphere</span>

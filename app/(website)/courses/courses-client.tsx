@@ -64,7 +64,7 @@ export default function CoursesClient({
               className="block bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group card-hover"
             >
               {/* Cover image */}
-              <div className="relative h-44 bg-gradient-to-br from-primary/10 to-indigo-100 overflow-hidden">
+              <div className="relative h-44 bg-primary/10 overflow-hidden">
                 {course.cover_image_url && (
                   <img
                     src={course.cover_image_url}

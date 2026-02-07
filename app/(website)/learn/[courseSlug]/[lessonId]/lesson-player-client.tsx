@@ -387,8 +387,8 @@ export default function LessonPlayerClient({
               {currentLesson.lesson_type === 'quiz' && quiz && (
                 <div className="mb-6">
                   {!quizStarted && !quizCompleted && (
-                    <div className="bg-gradient-to-br from-primary-50 to-indigo-50 rounded-3xl p-8 text-center border border-primary/10">
-                      <div className="w-16 h-16 bg-gradient-to-br from-primary to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/20">
+                    <div className="bg-primary-50 rounded-3xl p-8 text-center border border-primary/10">
+                      <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/20">
                         <HelpCircle className="w-8 h-8 text-white" />
                       </div>
                       <h2 className="text-xl font-bold text-gray-900 mb-2">{quiz.title}</h2>
@@ -434,7 +434,7 @@ export default function LessonPlayerClient({
                                 isSelected ? 'border-primary bg-primary-50 text-primary' : 'border-gray-200 hover:border-gray-300 text-gray-700'
                               )}
                             >
-                              <div className={cn('w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors', isSelected ? 'border-primary bg-gradient-to-br from-primary to-indigo-600' : 'border-gray-300')}>
+                              <div className={cn('w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors', isSelected ? 'border-primary bg-primary' : 'border-gray-300')}>
                                 {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
                               </div>
                               <span className="text-sm font-medium">{option.text}</span>
@@ -500,7 +500,7 @@ export default function LessonPlayerClient({
 
                               {/* AI-generated explanation */}
                               {aiExplanations[qr.questionId] ? (
-                                <div className="ml-8 mt-3 p-3 bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-100 rounded-xl">
+                                <div className="ml-8 mt-3 p-3 bg-primary-50 border border-violet-100 rounded-xl">
                                   <div className="flex items-center gap-1.5 mb-1.5">
                                     <Bot className="w-3.5 h-3.5 text-violet-600" />
                                     <span className="text-xs font-semibold text-violet-700">AI Explanation</span>
@@ -590,8 +590,8 @@ export default function LessonPlayerClient({
               className="w-[380px] max-h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
             >
               {/* Chat Header */}
-              <div className="flex items-center gap-3 p-4 border-b border-gray-100 bg-gradient-to-r from-violet-50 to-indigo-50">
-                <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-md shadow-violet-500/20">
+              <div className="flex items-center gap-3 p-4 border-b border-gray-100 bg-primary-50">
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-md shadow-violet-500/20">
                   <Bot className="w-4 h-4 text-white" />
                 </div>
                 <div className="flex-1">
@@ -616,7 +616,7 @@ export default function LessonPlayerClient({
                     <div className={cn(
                       'max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
                       msg.role === 'user'
-                        ? 'bg-gradient-to-r from-primary to-indigo-600 text-white rounded-br-md'
+                        ? 'bg-primary text-white rounded-br-md'
                         : 'bg-gray-100 text-gray-800 rounded-bl-md'
                     )}>
                       {msg.text}
@@ -650,7 +650,7 @@ export default function LessonPlayerClient({
                   <button
                     type="submit"
                     disabled={!aiQuery.trim() || aiLoading}
-                    className="p-2.5 bg-gradient-to-r from-primary to-indigo-600 text-white rounded-xl hover:shadow-md hover:shadow-primary/20 transition-all disabled:opacity-50 cursor-pointer"
+                    className="p-2.5 bg-primary text-white rounded-xl hover:shadow-md hover:shadow-primary/20 transition-all disabled:opacity-50 cursor-pointer"
                   >
                     <Send className="w-4 h-4" />
                   </button>
@@ -667,7 +667,7 @@ export default function LessonPlayerClient({
             'w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-300 cursor-pointer',
             aiChatOpen
               ? 'bg-gray-200 text-gray-600 shadow-md'
-              : 'bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-xl shadow-violet-500/30 hover:shadow-2xl hover:shadow-violet-500/40 hover:scale-105'
+              : 'bg-primary text-white shadow-xl shadow-violet-500/30 hover:shadow-2xl hover:shadow-violet-500/40 hover:scale-105'
           )}
         >
           {aiChatOpen ? <X className="w-5 h-5" /> : <Bot className="w-6 h-6" />}

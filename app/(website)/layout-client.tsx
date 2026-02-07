@@ -58,7 +58,7 @@ export default function WebsiteLayoutClient({ children, user }: { children: Reac
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2.5 group">
               <div className="relative">
-                <div className="w-9 h-9 bg-gradient-to-br from-violet-500 via-primary to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-xl group-hover:shadow-primary/30 transition-all duration-300 group-hover:scale-105">
+                <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-xl group-hover:shadow-primary/30 transition-all duration-300 group-hover:scale-105">
                   <GraduationCap className="w-5 h-5 text-white" />
                 </div>
               </div>
@@ -181,7 +181,7 @@ export default function WebsiteLayoutClient({ children, user }: { children: Reac
                 <SheetContent side="right" className="w-80 p-0">
                   <SheetHeader className="px-6 py-5 border-b border-border/50">
                     <SheetTitle className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 bg-gradient-to-br from-violet-500 via-primary to-indigo-600 rounded-lg flex items-center justify-center">
+                      <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                         <GraduationCap className="w-4 h-4 text-white" />
                       </div>
                       <span className="font-bold">LearnSphere</span>
@@ -261,7 +261,7 @@ export default function WebsiteLayoutClient({ children, user }: { children: Reac
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 bg-gradient-to-br from-violet-500 via-primary to-indigo-600 rounded-lg flex items-center justify-center">
+              <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
                 <GraduationCap className="w-4 h-4 text-white" />
               </div>
               <span className="text-sm font-semibold text-foreground">LearnSphere</span>

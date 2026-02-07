@@ -3,17 +3,19 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { Camera, Save, User as UserIcon, Mail, Shield, Trophy, Sparkles } from 'lucide-react';
+import { ArrowLeft, Camera, Save, User as UserIcon, Mail, Shield, Trophy, Check, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { FileUpload } from '@/components/ui/file-upload';
 import { Modal } from '@/components/ui/modal';
+import { cn } from '@/lib/utils';
 import { updateProfile } from '@/lib/actions';
-import { BADGE_LABELS, BADGE_COLORS } from '@/lib/types';
-import type { User } from '@/lib/types';
-import { motion } from 'framer-motion';
+import { BADGE_LABELS, BADGE_COLORS, BADGE_THRESHOLDS } from '@/lib/types';
+import type { User, BadgeLevel } from '@/lib/types';
+
+const BADGE_ORDER: BadgeLevel[] = ['newbie', 'explorer', 'achiever', 'specialist', 'expert', 'master'];
 
 export default function ProfileClient({ user }: { user: User }) {
   const router = useRouter();
@@ -25,6 +27,8 @@ export default function ProfileClient({ user }: { user: User }) {
   const [avatarUrl, setAvatarUrl] = useState(user.avatar_url || '');
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const currentBadgeIdx = BADGE_ORDER.indexOf(user.current_badge);
 
   const handleSave = () => {
     startTransition(async () => {
@@ -41,19 +45,19 @@ export default function ProfileClient({ user }: { user: User }) {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10">
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-bold text-gray-900 mb-8">Profile Settings</h1>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
+    <div className="max-w-3xl mx-auto px-4 py-8">
+      {/* Back button */}
+      <button
+        onClick={() => router.back()}
+        className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-6 transition-colors cursor-pointer"
       >
+        <ArrowLeft className="w-4 h-4" />
+        Back
+      </button>
+
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         {/* Avatar section */}
-        <div className="bg-gradient-to-r from-violet-600/10 via-indigo-600/10 to-blue-600/10 p-8 flex items-center gap-6">
+        <div className="bg-primary-50 p-8 flex items-center gap-6 border-b border-gray-100">
           <div className="relative group">
             <Avatar
               firstName={firstName}
@@ -63,7 +67,7 @@ export default function ProfileClient({ user }: { user: User }) {
             />
             <button
               onClick={() => setAvatarModalOpen(true)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer"
+              className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
             >
               <Camera className="w-6 h-6 text-white" />
             </button>
@@ -72,8 +76,8 @@ export default function ProfileClient({ user }: { user: User }) {
             <h2 className="text-xl font-semibold text-gray-900">
               {firstName} {lastName}
             </h2>
-            <p className="text-sm text-gray-500 mt-0.5">{user.email}</p>
-            <div className="flex items-center gap-2 mt-3">
+            <p className="text-sm text-gray-500">{user.email}</p>
+            <div className="flex items-center gap-2 mt-2">
               {(Array.isArray(user.roles) ? user.roles : []).map(role => (
                 <Badge key={role} variant={role === 'admin' ? 'error' : role === 'instructor' ? 'primary' : 'default'}>
                   <Shield className="w-3 h-3" />
@@ -113,49 +117,69 @@ export default function ProfileClient({ user }: { user: User }) {
             />
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4 border-t border-gray-100">
-            <div className="p-5 bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl text-center border border-amber-100/50">
-              <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-sm">
-                <Sparkles className="w-5 h-5 text-white" />
+          {/* Badge Progression */}
+          <div className="pt-4 border-t border-gray-100">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-gray-900">Badge Progress</h3>
+              <div className="flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-amber-500" />
+                <span className="text-sm font-bold text-gray-900">{user.total_points}</span>
+                <span className="text-xs text-gray-500">points</span>
               </div>
-              <p className="text-2xl font-bold text-amber-700">{user.total_points}</p>
-              <p className="text-xs text-amber-600">Total Points</p>
             </div>
-            <div className="p-5 bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl text-center border border-purple-100/50">
+
+            <div className="relative flex items-start justify-between">
+              {/* Connecting line */}
+              <div className="absolute top-[18px] left-[18px] right-[18px] h-0.5 bg-gray-200 z-0" />
               <div
-                className="w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center"
-                style={{ backgroundColor: `${BADGE_COLORS[user.current_badge]}20` }}
-              >
-                <div
-                  className="w-4 h-4 rounded-full"
-                  style={{ backgroundColor: BADGE_COLORS[user.current_badge] }}
-                />
-              </div>
-              <p className="text-lg font-bold text-purple-700">{BADGE_LABELS[user.current_badge]}</p>
-              <p className="text-xs text-purple-600">Current Badge</p>
-            </div>
-            <div className="p-5 bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl text-center border border-blue-100/50">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-sky-500 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-sm">
-                <UserIcon className="w-5 h-5 text-white" />
-              </div>
-              <p className="text-lg font-bold text-blue-700 capitalize">
-                {(Array.isArray(user.roles) ? user.roles : []).join(', ')}
-              </p>
-              <p className="text-xs text-blue-600">Role</p>
+                className="absolute top-[18px] left-[18px] h-0.5 bg-primary z-0 transition-all"
+                style={{ width: `calc(${(currentBadgeIdx / (BADGE_ORDER.length - 1)) * 100}% - 36px)` }}
+              />
+
+              {BADGE_ORDER.map((badge, idx) => {
+                const isAchieved = idx <= currentBadgeIdx;
+                const isCurrent = idx === currentBadgeIdx;
+                return (
+                  <div key={badge} className="flex flex-col items-center z-10 relative">
+                    <div
+                      className={cn(
+                        'w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all',
+                        isCurrent && 'ring-4 ring-primary/20 border-primary scale-110',
+                        isAchieved && !isCurrent && 'border-primary bg-primary/10',
+                        !isAchieved && 'border-gray-200 bg-white'
+                      )}
+                      style={isCurrent ? { backgroundColor: BADGE_COLORS[badge], borderColor: BADGE_COLORS[badge] } : {}}
+                    >
+                      {isCurrent ? (
+                        <Trophy className="w-4 h-4 text-white" />
+                      ) : isAchieved ? (
+                        <Check className="w-4 h-4 text-primary" />
+                      ) : (
+                        <Lock className="w-3.5 h-3.5 text-gray-300" />
+                      )}
+                    </div>
+                    <span className={cn(
+                      'text-[10px] mt-1.5 font-medium text-center leading-tight',
+                      isCurrent ? 'text-primary font-semibold' : isAchieved ? 'text-gray-700' : 'text-gray-400'
+                    )}>
+                      {BADGE_LABELS[badge]}
+                    </span>
+                    <span className={cn(
+                      'text-[9px]',
+                      isCurrent ? 'text-primary/70' : 'text-gray-400'
+                    )}>
+                      {BADGE_THRESHOLDS[badge]} pts
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
           {/* Save */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
             {saved && (
-              <motion.p
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="text-sm text-emerald-600 font-medium"
-              >
-                Profile saved successfully!
-              </motion.p>
+              <p className="text-sm text-green-600 font-medium">Profile saved successfully!</p>
             )}
             <Button onClick={handleSave} disabled={isPending}>
               <Save className="w-4 h-4" />
@@ -163,7 +187,7 @@ export default function ProfileClient({ user }: { user: User }) {
             </Button>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Avatar Upload Modal */}
       <Modal
@@ -191,7 +215,7 @@ export default function ProfileClient({ user }: { user: User }) {
                   setAvatarUrl('');
                   setAvatarModalOpen(false);
                 }}
-                className="text-sm text-red-500 hover:text-red-600 font-medium cursor-pointer"
+                className="text-sm text-red-600 hover:text-red-700 cursor-pointer"
               >
                 Remove current picture
               </button>
