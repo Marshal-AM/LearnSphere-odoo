@@ -32,33 +32,45 @@ export default function MeetingClient() {
 
   const [appState, setAppState] = useState<AppState>('idle');
   const [callObject, setCallObject] = useState<ReturnType<typeof DailyIframe.createCallObject> | null>(null);
-  const callObjectRef = useRef<ReturnType<typeof DailyIframe.createCallObject> | null>(null);
+  const cancelledRef = useRef(false);
 
   // Start the hair check when roomUrl is available
   useEffect(() => {
     if (!roomUrl) return;
+    cancelledRef.current = false;
 
-    // Destroy any lingering instance first
-    if (callObjectRef.current) {
-      try { callObjectRef.current.destroy(); } catch {}
-      callObjectRef.current = null;
+    let localCallObject: ReturnType<typeof DailyIframe.createCallObject> | null = null;
+
+    async function init() {
+      // Destroy any existing singleton first and await it
+      try {
+        const existing = DailyIframe.getCallInstance();
+        if (existing) await existing.destroy();
+      } catch {}
+
+      // If effect was cleaned up while we awaited, bail out
+      if (cancelledRef.current) return;
+
+      const co = DailyIframe.createCallObject();
+      localCallObject = co;
+      setCallObject(co);
+      setAppState('haircheck');
+
+      try {
+        await co.preAuth({ url: roomUrl });
+        if (!cancelledRef.current) await co.startCamera();
+      } catch {
+        if (!cancelledRef.current) setAppState('error');
+      }
     }
 
-    const newCallObject = DailyIframe.createCallObject();
-    callObjectRef.current = newCallObject;
-    setCallObject(newCallObject);
-    setAppState('haircheck');
-
-    newCallObject.preAuth({ url: roomUrl }).then(() => {
-      newCallObject.startCamera();
-    }).catch(() => {
-      // Room may have expired
-      setAppState('error');
-    });
+    init();
 
     return () => {
-      callObjectRef.current = null;
-      try { newCallObject.destroy(); } catch {}
+      cancelledRef.current = true;
+      if (localCallObject) {
+        localCallObject.destroy().catch(() => {});
+      }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomUrl]);
