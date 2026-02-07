@@ -1,57 +1,72 @@
-'use client';
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+import { Slot } from "radix-ui"
 
-import { cn } from '@/lib/utils';
-import { ButtonHTMLAttributes, forwardRef } from 'react';
+import { cn } from "@/lib/utils"
 
-type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'glass';
-type Size = 'sm' | 'md' | 'lg' | 'icon';
+const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all cursor-pointer disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 aria-invalid:border-destructive",
+  {
+    variants: {
+      variant: {
+        default:
+          "bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:brightness-110 active:scale-[0.97]",
+        primary:
+          "bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:brightness-110 active:scale-[0.97]",
+        destructive:
+          "bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 hover:brightness-110 active:scale-[0.97]",
+        danger:
+          "bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 hover:brightness-110 active:scale-[0.97]",
+        outline:
+          "border border-border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground active:scale-[0.97]",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80 active:scale-[0.97]",
+        ghost:
+          "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+        glass:
+          "glass text-foreground/80 border border-white/30 shadow-sm hover:bg-white/60 active:scale-[0.97]",
+      },
+      size: {
+        default: "h-9 px-4 py-2 has-[>svg]:px-3",
+        xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+        md: "h-9 px-4 py-2 has-[>svg]:px-3",
+        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
+        icon: "size-9",
+        "icon-xs": "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm": "size-8",
+        "icon-lg": "size-10",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: Variant;
-  size?: Size;
-  loading?: boolean;
+function Button({
+  className,
+  variant = "default",
+  size = "default",
+  asChild = false,
+  ...props
+}: React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean
+  }) {
+  const Comp = asChild ? Slot.Root : "button"
+
+  return (
+    <Comp
+      data-slot="button"
+      data-variant={variant}
+      data-size={size}
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  )
 }
 
-const variantStyles: Record<Variant, string> = {
-  primary: 'bg-gradient-to-r from-primary to-indigo-600 text-white hover:from-primary-dark hover:to-indigo-700 shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30',
-  secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200/80',
-  outline: 'border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300',
-  ghost: 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-  danger: 'bg-gradient-to-r from-red-500 to-rose-600 text-white hover:from-red-600 hover:to-rose-700 shadow-md shadow-red-500/20',
-  glass: 'bg-white/20 backdrop-blur-md text-white hover:bg-white/30 border border-white/20',
-};
-
-const sizeStyles: Record<Size, string> = {
-  sm: 'px-3.5 py-1.5 text-sm',
-  md: 'px-5 py-2.5 text-sm',
-  lg: 'px-7 py-3 text-base',
-  icon: 'p-2.5',
-};
-
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'primary', size = 'md', loading, disabled, children, ...props }, ref) => {
-    return (
-      <button
-        ref={ref}
-        className={cn(
-          'inline-flex items-center justify-center gap-2 rounded-2xl font-medium transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none cursor-pointer active:scale-[0.97]',
-          variantStyles[variant],
-          sizeStyles[size],
-          className
-        )}
-        disabled={disabled || loading}
-        {...props}
-      >
-        {loading && (
-          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-        )}
-        {children}
-      </button>
-    );
-  }
-);
-
-Button.displayName = 'Button';
+export { Button, buttonVariants }

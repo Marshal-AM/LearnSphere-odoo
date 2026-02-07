@@ -1,7 +1,9 @@
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 import { BadgeLevel, BADGE_THRESHOLDS, LearnerCourseStatus } from './types';
 
-export function cn(...classes: (string | undefined | false | null)[]): string {
-  return classes.filter(Boolean).join(' ');
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
 }
 
 export function formatDate(dateStr: string): string {
