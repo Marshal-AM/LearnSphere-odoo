@@ -24,7 +24,7 @@ import { FileUpload } from '@/components/ui/file-upload';
 import { formatDuration, formatFileSize } from '@/lib/utils';
 import {
   updateCourse, createLesson, updateLesson, deleteLesson,
-  deleteQuiz, sendInvitation,
+  deleteQuiz, sendInvitation, createQuiz, updateQuiz,
 } from '@/lib/actions';
 import type { Course, Lesson, Quiz, Tag, LessonType, CourseVisibility, CourseAccessRule, User } from '@/lib/types';
 
@@ -227,6 +227,20 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
   // Cover image upload
   const [coverUploadOpen, setCoverUploadOpen] = useState(false);
 
+  // Quiz details modal (add or edit before opening quiz builder)
+  const [quizModalOpen, setQuizModalOpen] = useState(false);
+  const [quizModalMode, setQuizModalMode] = useState<'add' | 'edit'>('add');
+  const [quizModalQuiz, setQuizModalQuiz] = useState<Quiz | null>(null);
+  const [quizForm, setQuizForm] = useState({
+    title: '',
+    description: '',
+    first: '10',
+    second: '7',
+    third: '5',
+    fourth: '2',
+  });
+  const [quizModalSaving, setQuizModalSaving] = useState(false);
+
   // Validation errors
   const [courseErrors, setCourseErrors] = useState<Record<string, string>>({});
   const [lessonErrors, setLessonErrors] = useState<Record<string, string>>({});
@@ -285,6 +299,56 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
   const goToQuizBuilder = (path: string) => {
     saveDraft(course.id, currentDraft());
     router.push(path);
+  };
+
+  const openQuizModal = (mode: 'add' | 'edit', quiz?: Quiz) => {
+    setQuizModalMode(mode);
+    setQuizModalQuiz(quiz ?? null);
+    if (mode === 'add') {
+      setQuizForm({ title: '', description: '', first: '10', second: '7', third: '5', fourth: '2' });
+    } else if (quiz) {
+      setQuizForm({
+        title: quiz.title,
+        description: quiz.description || '',
+        first: quiz.points_first_attempt?.toString() ?? '10',
+        second: quiz.points_second_attempt?.toString() ?? '7',
+        third: quiz.points_third_attempt?.toString() ?? '5',
+        fourth: quiz.points_fourth_plus_attempt?.toString() ?? '2',
+      });
+    }
+    setQuizModalOpen(true);
+  };
+
+  const handleQuizModalSubmit = async () => {
+    if (!quizForm.title.trim()) return;
+    setQuizModalSaving(true);
+    try {
+      if (quizModalMode === 'add') {
+        const result = await createQuiz(course.id, {
+          title: quizForm.title.trim(),
+          description: quizForm.description.trim() || undefined,
+          points_first_attempt: parseInt(quizForm.first) || 10,
+          points_second_attempt: parseInt(quizForm.second) || 7,
+          points_third_attempt: parseInt(quizForm.third) || 5,
+          points_fourth_plus_attempt: parseInt(quizForm.fourth) || 2,
+        });
+        setQuizModalOpen(false);
+        if (result?.id) goToQuizBuilder(`/admin/courses/${course.id}/quiz-builder/${result.id}`);
+      } else if (quizModalQuiz) {
+        await updateQuiz(quizModalQuiz.id, {
+          title: quizForm.title.trim(),
+          description: quizForm.description.trim() || undefined,
+          points_first_attempt: parseInt(quizForm.first) || 10,
+          points_second_attempt: parseInt(quizForm.second) || 7,
+          points_third_attempt: parseInt(quizForm.third) || 5,
+          points_fourth_plus_attempt: parseInt(quizForm.fourth) || 2,
+        });
+        setQuizModalOpen(false);
+        goToQuizBuilder(`/admin/courses/${course.id}/quiz-builder/${quizModalQuiz.id}`);
+      }
+    } finally {
+      setQuizModalSaving(false);
+    }
   };
 
   const handleBackClick = (e: React.MouseEvent) => {
@@ -505,7 +569,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
     <div>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-gray-700">Quizzes ({initialQuizzes.length})</h3>
-        <Button size="sm" onClick={() => goToQuizBuilder(`/admin/courses/${course.id}/quiz-builder/new`)}>
+        <Button size="sm" onClick={() => openQuizModal('add')}>
           <Plus className="w-4 h-4" />
           Add Quiz
         </Button>
@@ -537,7 +601,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
             >
               <DropdownItem
                 icon={<Edit className="w-4 h-4" />}
-                onClick={() => goToQuizBuilder(`/admin/courses/${course.id}/quiz-builder/${quiz.id}`)}
+                onClick={() => openQuizModal('edit', quiz)}
               >
                 Edit
               </DropdownItem>
@@ -1251,6 +1315,75 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
         confirmLabel="Leave"
         danger
       />
+
+      {/* Quiz details modal – enter name & settings before opening quiz builder */}
+      <Modal
+        isOpen={quizModalOpen}
+        onClose={() => setQuizModalOpen(false)}
+        title={quizModalMode === 'add' ? 'New Quiz' : 'Edit Quiz Details'}
+        size="sm"
+      >
+        <div className="p-6 space-y-4">
+          <Input
+            label="Quiz Title"
+            value={quizForm.title}
+            onChange={e => setQuizForm(prev => ({ ...prev, title: e.target.value }))}
+            placeholder="e.g. Module 1 Knowledge Check"
+            required
+          />
+          <Textarea
+            label="Description (optional)"
+            value={quizForm.description}
+            onChange={e => setQuizForm(prev => ({ ...prev, description: e.target.value }))}
+            placeholder="What does this quiz cover?"
+            className="min-h-[80px]"
+          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Points per attempt</label>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="First attempt"
+                type="number"
+                value={quizForm.first}
+                onChange={e => setQuizForm(prev => ({ ...prev, first: e.target.value }))}
+                placeholder="10"
+              />
+              <Input
+                label="Second attempt"
+                type="number"
+                value={quizForm.second}
+                onChange={e => setQuizForm(prev => ({ ...prev, second: e.target.value }))}
+                placeholder="7"
+              />
+              <Input
+                label="Third attempt"
+                type="number"
+                value={quizForm.third}
+                onChange={e => setQuizForm(prev => ({ ...prev, third: e.target.value }))}
+                placeholder="5"
+              />
+              <Input
+                label="Fourth+ attempt"
+                type="number"
+                value={quizForm.fourth}
+                onChange={e => setQuizForm(prev => ({ ...prev, fourth: e.target.value }))}
+                placeholder="2"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => setQuizModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleQuizModalSubmit}
+              disabled={quizModalSaving || !quizForm.title.trim()}
+            >
+              {quizModalSaving ? 'Saving...' : quizModalMode === 'add' ? 'Create Quiz & Open Builder' : 'Save & Open Builder'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

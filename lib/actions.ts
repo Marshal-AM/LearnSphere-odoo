@@ -201,8 +201,82 @@ export async function createQuiz(courseId: string, data: {
       data.points_third_attempt || 5, data.points_fourth_plus_attempt || 2,
     ]
   );
+
+  if (quiz?.id) {
+    const maxSeq = await queryOne<{ max_seq: number }>(
+      `SELECT COALESCE(MAX(sequence_order), 0) as max_seq FROM lessons WHERE course_id = $1`,
+      [courseId]
+    );
+    const nextOrder = (maxSeq?.max_seq ?? 0) + 1;
+    await query(
+      `INSERT INTO lessons (course_id, title, lesson_type, sequence_order, quiz_id)
+       VALUES ($1, $2, 'quiz', $3, $4)`,
+      [courseId, data.title, nextOrder, quiz.id]
+    );
+  }
+
   revalidatePath(`/admin/courses/${courseId}`);
   return quiz;
+}
+
+export async function updateQuiz(quizId: string, data: {
+  title?: string;
+  description?: string;
+  points_first_attempt?: number;
+  points_second_attempt?: number;
+  points_third_attempt?: number;
+  points_fourth_plus_attempt?: number;
+}) {
+  const session = await getSession();
+  if (!session?.user) throw new Error('Unauthorized');
+
+  const course = await queryOne<{ course_id: string }>(`SELECT course_id FROM quizzes WHERE id = $1`, [quizId]);
+  if (!course?.course_id) throw new Error('Quiz not found');
+
+  const updates: string[] = [];
+  const params: unknown[] = [];
+  let idx = 1;
+  if (data.title !== undefined) {
+    updates.push(`title = $${idx}`);
+    params.push(data.title);
+    idx++;
+  }
+  if (data.description !== undefined) {
+    updates.push(`description = $${idx}`);
+    params.push(data.description);
+    idx++;
+  }
+  if (data.points_first_attempt !== undefined) {
+    updates.push(`points_first_attempt = $${idx}`);
+    params.push(data.points_first_attempt);
+    idx++;
+  }
+  if (data.points_second_attempt !== undefined) {
+    updates.push(`points_second_attempt = $${idx}`);
+    params.push(data.points_second_attempt);
+    idx++;
+  }
+  if (data.points_third_attempt !== undefined) {
+    updates.push(`points_third_attempt = $${idx}`);
+    params.push(data.points_third_attempt);
+    idx++;
+  }
+  if (data.points_fourth_plus_attempt !== undefined) {
+    updates.push(`points_fourth_plus_attempt = $${idx}`);
+    params.push(data.points_fourth_plus_attempt);
+    idx++;
+  }
+  if (updates.length > 0) {
+    params.push(quizId);
+    await query(
+      `UPDATE quizzes SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${idx}`,
+      params
+    );
+    if (data.title !== undefined) {
+      await query(`UPDATE lessons SET title = $1, updated_at = NOW() WHERE quiz_id = $2`, [data.title, quizId]);
+    }
+  }
+  revalidatePath(`/admin/courses/${course.course_id}`);
 }
 
 export async function saveQuizQuestions(quizId: string, questions: {
@@ -237,6 +311,7 @@ export async function deleteQuiz(quizId: string) {
   const session = await getSession();
   if (!session?.user) throw new Error('Unauthorized');
 
+  await query(`UPDATE lessons SET deleted_at = NOW() WHERE quiz_id = $1`, [quizId]);
   await query(`UPDATE quizzes SET deleted_at = NOW() WHERE id = $1`, [quizId]);
 }
 
