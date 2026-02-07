@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { GraduationCap, BookOpen, Presentation, Loader2 } from 'lucide-react';
+import { BookOpen, Presentation, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { updateUserRole } from '@/lib/actions';
 import { motion } from 'framer-motion';
+import { Logo } from '@/components/logo';
 
 type Role = 'learner' | 'instructor';
 
@@ -81,9 +82,7 @@ export default function ChooseRolePage() {
       >
         {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-md shadow-primary/20">
-            <GraduationCap className="w-6 h-6 text-white" />
-          </div>
+          <Logo size="md" />
           <span className="text-2xl font-bold text-gray-900">LearnSphere</span>
         </div>
 

@@ -48,7 +48,6 @@
   --sidebar-bg: #0f0a1e;
   --sidebar-text: #e2e8f0;
   --sidebar-active: #7c3aed;
-  --sidebar: hsl(0 0% 98%);
 }
 
 @theme inline {
@@ -174,6 +173,27 @@ body {
 
 .animate-float {
   animation: float 6s ease-in-out infinite;
+}
+
+/* Marquee animation for infinite scrolling */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}
+
+/* Bounce-in for scroll reveals */
+@keyframes bounce-in {
+  0% { transform: scale(0.95); opacity: 0; }
+  60% { transform: scale(1.02); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.6s ease-out forwards;
 }
 
 /* Pulse glow */

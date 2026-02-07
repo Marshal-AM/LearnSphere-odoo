@@ -4,12 +4,13 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
-import { GraduationCap, BookOpen, Presentation } from 'lucide-react';
+import { BookOpen, Presentation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { registerUser } from '@/lib/actions';
 import { motion } from 'framer-motion';
+import { Logo } from '@/components/logo';
 
 type Role = 'learner' | 'instructor';
 
@@ -103,9 +104,7 @@ export default function RegisterPage() {
           className="max-w-md text-white relative z-10"
         >
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/20">
-              <GraduationCap className="w-7 h-7 text-white" />
-            </div>
+            <Logo size="lg" variant="inverted" />
             <span className="text-2xl font-bold">LearnSphere</span>
           </div>
           <h1 className="text-4xl font-bold mb-4 leading-tight">Start your learning journey</h1>
@@ -124,9 +123,7 @@ export default function RegisterPage() {
           className="w-full max-w-md"
         >
           <div className="lg:hidden flex items-center gap-2.5 mb-8">
-            <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-md shadow-primary/20">
-              <GraduationCap className="w-5 h-5 text-white" />
-            </div>
+            <Logo size="md" />
             <span className="text-xl font-bold">LearnSphere</span>
           </div>
 

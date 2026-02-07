@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactNode, useState, useEffect, useCallback } from 'react';
 import {
-  GraduationCap, BookOpen, BarChart3, LogOut, Bell,
+  BookOpen, BarChart3, LogOut, Bell,
   User as UserIcon, Settings, ChevronsUpDown, Globe,
   Video, DollarSign,
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils';
+import { Logo } from '@/components/logo';
 import { Avatar } from '@/components/ui/avatar';
 import {
   Sidebar,
@@ -108,16 +109,11 @@ export default function AdminLayoutClient({ children, user }: { children: ReactN
 
   return (
     <SidebarProvider>
-      <Sidebar variant="inset" className="border-none">
+      <Sidebar variant="sidebar" className="border-r">
         {/* ─── Header: Logo ─── */}
         <SidebarHeader className="px-4 py-5">
           <Link href="/admin/courses" className="flex items-center gap-3 group">
-            <div className="relative">
-              <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/30 group-hover:shadow-xl group-hover:shadow-primary/40 transition-all duration-300 group-hover:scale-105">
-                <GraduationCap className="w-5 h-5 text-white" />
-              </div>
-              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-sidebar-bg" />
-            </div>
+            <Logo size="xl" />
             <div className="flex flex-col">
               <span className="text-base font-bold text-sidebar-accent-foreground tracking-tight">LearnSphere</span>
               <span className="text-[10px] font-medium text-sidebar-foreground/40 uppercase tracking-widest">Admin Panel</span>
