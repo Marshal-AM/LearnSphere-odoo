@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Plus, LayoutGrid, List, Eye, Clock, BookOpen, Share2,
-  Edit, MoreVertical, Globe, GripVertical,
+  Edit, MoreVertical, Globe, GripVertical, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,7 @@ import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
 import { Dropdown, DropdownItem } from '@/components/ui/dropdown';
 import { formatDuration } from '@/lib/utils';
-import { createCourse } from '@/lib/actions';
+import { createCourse, deleteCourse } from '@/lib/actions';
 import { motion } from 'framer-motion';
 import type { Course, CourseStatus, Tag } from '@/lib/types';
 
@@ -42,6 +42,9 @@ export default function CoursesDashboardClient({
   const [newCourseName, setNewCourseName] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const filteredCourses = courses.filter(c =>
     c.title.toLowerCase().includes(search.toLowerCase())
@@ -66,6 +69,26 @@ export default function CoursesDashboardClient({
         router.refresh();
       });
     }
+  };
+
+  const handleDeleteCourse = async () => {
+    if (!courseToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteCourse(courseToDelete.id);
+      router.refresh();
+    } catch (err) {
+      console.error('Failed to delete course:', err);
+    } finally {
+      setIsDeleting(false);
+      setDeleteModalOpen(false);
+      setCourseToDelete(null);
+    }
+  };
+
+  const openDeleteModal = (course: { id: string; title: string }) => {
+    setCourseToDelete(course);
+    setDeleteModalOpen(true);
   };
 
   const CourseCard = ({ course }: { course: Course }) => (
@@ -103,6 +126,13 @@ export default function CoursesDashboardClient({
               onClick={() => handleShare(course.slug, course.id)}
             >
               {copiedId === course.id ? 'Link Copied!' : 'Share'}
+            </DropdownItem>
+            <DropdownItem
+              icon={<Trash2 className="w-4 h-4 text-red-500" />}
+              onClick={() => openDeleteModal({ id: course.id, title: course.title })}
+              className="text-red-600 hover:!bg-red-50"
+            >
+              Delete
             </DropdownItem>
           </Dropdown>
         </div>
@@ -294,6 +324,13 @@ export default function CoursesDashboardClient({
                       >
                         <Share2 className="w-4 h-4" />
                       </button>
+                      <button
+                        onClick={() => openDeleteModal({ id: course.id, title: course.title })}
+                        className="p-2 text-gray-400 hover:text-red-500 rounded-xl hover:bg-red-50 transition-colors cursor-pointer"
+                        title="Delete course"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -324,6 +361,40 @@ export default function CoursesDashboardClient({
             </Button>
             <Button onClick={handleCreateCourse} disabled={!newCourseName.trim() || isPending}>
               {isPending ? 'Creating...' : 'Create Course'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Course Confirmation Modal */}
+      <Modal
+        isOpen={deleteModalOpen}
+        onClose={() => { setDeleteModalOpen(false); setCourseToDelete(null); }}
+        title="Delete Course"
+        size="sm"
+      >
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+              <Trash2 className="w-5 h-5 text-red-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-700">
+                Are you sure you want to delete <span className="font-semibold text-gray-900">{courseToDelete?.title}</span>?
+              </p>
+              <p className="text-xs text-gray-400 mt-1">This action can be undone by an administrator.</p>
+            </div>
+          </div>
+          <div className="mt-6 flex justify-end gap-3">
+            <Button variant="outline" onClick={() => { setDeleteModalOpen(false); setCourseToDelete(null); }}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteCourse}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Course'}
             </Button>
           </div>
         </div>
