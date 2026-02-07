@@ -1,4 +1,7 @@
+'use client';
+
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 interface ProgressBarProps {
   value: number; // 0-100
@@ -18,15 +21,18 @@ export function ProgressBar({ value, className, showLabel = false, size = 'md', 
   };
 
   return (
-    <div className={cn('flex items-center gap-2', className)}>
-      <div className={cn('flex-1 bg-gray-200 rounded-full overflow-hidden', heightMap[size])}>
-        <div
-          className={cn('h-full rounded-full transition-all duration-500', !color && 'bg-primary')}
-          style={{ width: `${clampedValue}%`, ...(color ? { backgroundColor: color } : {}) }}
+    <div className={cn('flex items-center gap-3', className)}>
+      <div className={cn('flex-1 bg-gray-100 rounded-full overflow-hidden', heightMap[size])}>
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${clampedValue}%` }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+          className={cn('h-full rounded-full', !color && 'bg-gradient-to-r from-primary to-indigo-500')}
+          style={color ? { backgroundColor: color } : undefined}
         />
       </div>
       {showLabel && (
-        <span className="text-sm font-medium text-gray-600 min-w-[3rem] text-right">
+        <span className="text-sm font-medium text-gray-600 min-w-[3rem] text-right tabular-nums">
           {Math.round(clampedValue)}%
         </span>
       )}

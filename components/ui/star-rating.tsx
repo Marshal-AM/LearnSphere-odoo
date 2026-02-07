@@ -29,7 +29,7 @@ export function StarRating({
   className,
 }: StarRatingProps) {
   return (
-    <div className={cn('flex items-center gap-1', className)}>
+    <div className={cn('flex items-center gap-0.5', className)}>
       {Array.from({ length: maxRating }, (_, i) => {
         const filled = i < Math.floor(rating);
         const halfFilled = !filled && i < rating;
@@ -40,8 +40,8 @@ export function StarRating({
             disabled={!interactive}
             onClick={() => interactive && onChange?.(i + 1)}
             className={cn(
-              'transition-colors',
-              interactive ? 'cursor-pointer hover:scale-110' : 'cursor-default'
+              'transition-all duration-200',
+              interactive ? 'cursor-pointer hover:scale-125' : 'cursor-default'
             )}
           >
             <Star
@@ -51,14 +51,14 @@ export function StarRating({
                   ? 'fill-amber-400 text-amber-400'
                   : halfFilled
                   ? 'fill-amber-200 text-amber-400'
-                  : 'fill-gray-200 text-gray-300'
+                  : 'fill-gray-200 text-gray-200'
               )}
             />
           </button>
         );
       })}
       {showValue && (
-        <span className="ml-1 text-sm font-medium text-gray-600">
+        <span className="ml-1.5 text-sm font-semibold text-gray-700 tabular-nums">
           {rating.toFixed(1)}
         </span>
       )}

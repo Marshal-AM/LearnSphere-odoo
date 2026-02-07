@@ -16,14 +16,14 @@ const sizeMap = {
 };
 
 const colorPalette = [
-  'bg-violet-500',
-  'bg-blue-500',
-  'bg-emerald-500',
-  'bg-amber-500',
-  'bg-rose-500',
-  'bg-cyan-500',
-  'bg-pink-500',
-  'bg-indigo-500',
+  'bg-gradient-to-br from-violet-500 to-purple-600',
+  'bg-gradient-to-br from-blue-500 to-cyan-600',
+  'bg-gradient-to-br from-emerald-500 to-teal-600',
+  'bg-gradient-to-br from-amber-500 to-orange-600',
+  'bg-gradient-to-br from-rose-500 to-pink-600',
+  'bg-gradient-to-br from-cyan-500 to-blue-600',
+  'bg-gradient-to-br from-pink-500 to-fuchsia-600',
+  'bg-gradient-to-br from-indigo-500 to-violet-600',
 ];
 
 function getColor(name: string): string {
@@ -43,7 +43,7 @@ export function Avatar({ src, firstName, lastName, size = 'md', className }: Ava
       <img
         src={src}
         alt={`${firstName} ${lastName}`}
-        className={cn('rounded-full object-cover', sizeMap[size], className)}
+        className={cn('rounded-full object-cover ring-2 ring-white shadow-sm', sizeMap[size], className)}
       />
     );
   }
@@ -51,7 +51,7 @@ export function Avatar({ src, firstName, lastName, size = 'md', className }: Ava
   return (
     <div
       className={cn(
-        'rounded-full flex items-center justify-center text-white font-semibold',
+        'rounded-full flex items-center justify-center text-white font-semibold ring-2 ring-white shadow-sm',
         sizeMap[size],
         bgColor,
         className

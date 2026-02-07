@@ -264,8 +264,8 @@ export function FileUpload({
           </div>
         )}
 
-        <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-          <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+        <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-100 rounded-2xl">
+          <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">{uploadedName || 'Uploaded file'}</p>
             <p className="text-xs text-gray-500 truncate">{uploadedUrl}</p>
@@ -291,7 +291,7 @@ export function FileUpload({
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
         className={cn(
-          'border-2 border-dashed rounded-lg transition-colors cursor-pointer',
+          'border-2 border-dashed rounded-2xl transition-all duration-200 cursor-pointer',
           compact ? 'p-4' : 'p-8',
           dragOver
             ? 'border-primary bg-primary-50'
@@ -313,7 +313,7 @@ export function FileUpload({
             <p className="text-sm text-gray-600">Uploading… {progress}%</p>
             <div className="mt-2 w-full bg-gray-200 rounded-full h-1.5">
               <div
-                className="bg-primary h-1.5 rounded-full transition-all duration-300"
+                className="bg-gradient-to-r from-primary to-indigo-500 h-1.5 rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>

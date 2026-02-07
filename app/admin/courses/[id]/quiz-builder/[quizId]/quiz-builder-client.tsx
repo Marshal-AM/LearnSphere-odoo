@@ -3,7 +3,8 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Plus, Trash2, Check, Trophy, GripVertical, Save } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Plus, Trash2, Check, Trophy, GripVertical, Save, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Textarea } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
@@ -163,11 +164,15 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between mb-6"
+      >
         <div className="flex items-center gap-3">
           <Link
             href={`/admin/courses/${courseId}`}
-            className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+            className="p-2 text-gray-400 hover:text-gray-600 rounded-2xl hover:bg-gray-100 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
@@ -182,15 +187,20 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
           </div>
         </div>
         <Button onClick={handleSave} disabled={isPending}>
-          <Save className="w-4 h-4" />
+          <Sparkles className="w-4 h-4" />
           {isPending ? 'Saving...' : 'Save Quiz'}
         </Button>
-      </div>
+      </motion.div>
 
       <div className="flex gap-6">
         {/* Left panel - question list */}
-        <div className="w-64 flex-shrink-0">
-          <div className="bg-white rounded-xl border border-gray-200 p-4 sticky top-24">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.05 }}
+          className="w-64 flex-shrink-0"
+        >
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 sticky top-24 shadow-sm">
             <h3 className="text-sm font-semibold text-gray-900 mb-3">Questions</h3>
             <div className="space-y-1 mb-4">
               {questions.map((q, idx) => (
@@ -198,9 +208,9 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
                   key={q.id}
                   onClick={() => setSelectedQuestion(idx)}
                   className={cn(
-                    'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left transition-colors cursor-pointer',
+                    'w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-left transition-all duration-200 cursor-pointer',
                     selectedQuestion === idx
-                      ? 'bg-primary-50 text-primary font-medium'
+                      ? 'bg-gradient-to-r from-primary-50 to-indigo-50 text-primary font-medium shadow-sm'
                       : 'text-gray-600 hover:bg-gray-50'
                   )}
                 >
@@ -210,7 +220,7 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
                     {q.text && `: ${q.text.substring(0, 20)}...`}
                   </span>
                   {q.correctIds.length > 0 && (
-                    <Check className="w-3.5 h-3.5 text-green-500" />
+                    <Check className="w-3.5 h-3.5 text-emerald-500" />
                   )}
                 </button>
               ))}
@@ -226,12 +236,17 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
               </Button>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Main - question editor */}
-        <div className="flex-1">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="flex-1"
+        >
           {currentQ && (
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">
                   Question {selectedQuestion + 1}
@@ -260,7 +275,7 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
               <div className="mt-6">
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-sm font-medium text-gray-700">
-                    Options <span className="text-gray-400 font-normal">(click ✓ to mark correct)</span>
+                    Options <span className="text-gray-400 font-normal">(click checkmark to mark correct)</span>
                   </label>
                 </div>
                 <div className="space-y-2">
@@ -269,10 +284,10 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
                       <button
                         onClick={() => toggleCorrect(selectedQuestion, option.id)}
                         className={cn(
-                          'w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-colors flex-shrink-0 cursor-pointer',
+                          'w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all duration-200 flex-shrink-0 cursor-pointer',
                           currentQ.correctIds.includes(option.id)
-                            ? 'bg-green-500 border-green-500 text-white'
-                            : 'border-gray-300 text-transparent hover:border-green-300 hover:text-green-300'
+                            ? 'bg-gradient-to-br from-emerald-500 to-green-500 border-emerald-500 text-white shadow-sm'
+                            : 'border-gray-300 text-transparent hover:border-emerald-300 hover:text-emerald-300'
                         )}
                       >
                         <Check className="w-4 h-4" />
@@ -287,7 +302,7 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
                       {currentQ.options.length > 2 && (
                         <button
                           onClick={() => removeOption(selectedQuestion, option.id)}
-                          className="p-1.5 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                          className="p-1.5 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -307,7 +322,7 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
 
       {/* Rewards Modal */}

@@ -3,10 +3,11 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Eye, UserPlus, Mail, Upload, Video, FileText,
   Image as ImageIcon, HelpCircle, MoreVertical, Edit, Trash2, Plus,
-  GripVertical, ExternalLink, Link as LinkIcon, AlertTriangle,
+  GripVertical, ExternalLink, Link as LinkIcon, AlertTriangle, Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -280,12 +281,12 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
           return (
             <div
               key={lesson.id}
-              className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+              className="flex items-center gap-3 p-3 bg-gray-50/80 rounded-2xl hover:bg-gray-100/80 transition-all duration-200 group hover:shadow-sm"
             >
               <GripVertical className="w-4 h-4 text-gray-300 cursor-grab" />
               <span className="text-sm font-medium text-gray-400 w-6">{idx + 1}</span>
-              <div className="p-1.5 rounded bg-white border border-gray-200">
-                <Icon className="w-4 h-4 text-gray-500" />
+              <div className="p-1.5 rounded-xl bg-white border border-gray-100">
+                <Icon className="w-4 h-4 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{lesson.title}</p>
@@ -297,7 +298,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
               </div>
               <Dropdown
                 trigger={
-                  <div className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-opacity">
+                  <div className="p-1.5 rounded-xl opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-all duration-200">
                     <MoreVertical className="w-4 h-4 text-gray-500" />
                   </div>
                 }
@@ -353,8 +354,8 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
           ].map(opt => (
             <label
               key={opt.value}
-              className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                visibility === opt.value ? 'border-primary bg-primary-50' : 'border-gray-200 hover:border-gray-300'
+              className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all duration-200 ${
+                visibility === opt.value ? 'border-primary/50 bg-primary-50 shadow-sm' : 'border-gray-100 hover:border-gray-300'
               }`}
             >
               <input
@@ -385,8 +386,8 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
           ].map(opt => (
             <label
               key={opt.value}
-              className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                accessRule === opt.value ? 'border-primary bg-primary-50' : 'border-gray-200 hover:border-gray-300'
+              className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all duration-200 ${
+                accessRule === opt.value ? 'border-primary/50 bg-primary-50 shadow-sm' : 'border-gray-100 hover:border-gray-300'
               }`}
             >
               <input
@@ -406,7 +407,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
         </div>
 
         {accessRule === 'on_payment' && (
-          <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+          <div className="mt-4 p-4 bg-amber-50 rounded-2xl border border-amber-100">
             <Input
               label="Price (USD)"
               type="number"
@@ -459,10 +460,10 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
         {initialQuizzes.map(quiz => (
           <div
             key={quiz.id}
-            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+            className="flex items-center justify-between p-3 bg-gray-50/80 rounded-2xl hover:bg-gray-100/80 transition-all duration-200 group hover:shadow-sm"
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-white rounded-lg border border-gray-200">
+              <div className="p-2 bg-white rounded-xl border border-gray-100">
                 <HelpCircle className="w-4 h-4 text-primary" />
               </div>
               <div>
@@ -475,7 +476,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
             </div>
             <Dropdown
               trigger={
-                <div className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-opacity">
+                <div className="p-1.5 rounded-xl opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-all duration-200">
                   <MoreVertical className="w-4 h-4 text-gray-500" />
                 </div>
               }
@@ -509,25 +510,36 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
   return (
     <div>
       {/* Validation error banner */}
-      {Object.keys(courseErrors).length > 0 && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-semibold text-red-800">Please fix the following issues before saving:</p>
-            <ul className="mt-1 list-disc list-inside text-sm text-red-700 space-y-0.5">
-              {Object.entries(courseErrors).map(([key, msg]) => (
-                <li key={key}>{msg}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {Object.keys(courseErrors).length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mb-4 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3"
+          >
+            <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-red-800">Please fix the following issues before saving:</p>
+              <ul className="mt-1 list-disc list-inside text-sm text-red-700 space-y-0.5">
+                {Object.entries(courseErrors).map(([key, msg]) => (
+                  <li key={key}>{msg}</li>
+                ))}
+              </ul>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center gap-3 mb-6"
+      >
         <Link
           href="/admin/courses"
-          className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+          className="p-2 text-gray-400 hover:text-gray-600 rounded-2xl hover:bg-gray-100 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
@@ -535,12 +547,18 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
           <h1 className="text-2xl font-bold text-gray-900">{title || 'New Course'}</h1>
         </div>
         <Button onClick={handleSave} disabled={isPending}>
+          <Sparkles className="w-4 h-4" />
           {isPending ? 'Saving...' : 'Save Changes'}
         </Button>
-      </div>
+      </motion.div>
 
       {/* Action bar */}
-      <div className="flex flex-wrap items-center gap-3 mb-6 p-4 bg-white rounded-xl border border-gray-200">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="flex flex-wrap items-center gap-3 mb-6 p-4 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm"
+      >
         <Toggle
           checked={isPublished}
           onChange={(v) => {
@@ -569,17 +587,22 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
           <Upload className="w-4 h-4" />
           {coverImageUrl ? 'Change Cover' : 'Upload Cover'}
         </Button>
-      </div>
+      </motion.div>
 
       {/* Cover image preview */}
       {coverImageUrl && (
-        <div className="mb-6 relative rounded-xl overflow-hidden h-48 bg-gray-100">
+        <div className="mb-6 relative rounded-2xl overflow-hidden h-48 bg-gray-100 shadow-sm">
           <img src={coverImageUrl} alt="Course cover" className="w-full h-full object-cover" />
         </div>
       )}
 
       {/* Course fields */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-white rounded-2xl border border-gray-100 p-6 mb-6 shadow-sm"
+      >
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <Input
@@ -609,7 +632,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
           </div>
           <div className="space-y-1">
             <label className="block text-sm font-medium text-gray-700">Tags</label>
-            <div className="flex flex-wrap gap-2 p-2 border border-gray-300 rounded-lg min-h-[42px]">
+            <div className="flex flex-wrap gap-2 p-2 border border-gray-200 rounded-2xl min-h-[42px]">
               {courseTagsState.map(tag => (
                 <Badge key={tag} className="flex items-center gap-1">
                   {tag}
@@ -652,7 +675,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
           ) : (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Course Admin</label>
-              <p className="text-sm text-gray-500 p-2 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-sm text-gray-500 p-2 bg-gray-50 rounded-2xl border border-gray-100">
                 {instructors.find(u => u.id === adminId)
                   ? `${instructors.find(u => u.id === adminId)!.first_name} ${instructors.find(u => u.id === adminId)!.last_name}`
                   : 'Not assigned'}
@@ -660,10 +683,15 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm"
+      >
         <Tabs
           tabs={[
             { id: 'content', label: 'Content', content: ContentTab },
@@ -672,7 +700,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
             { id: 'quiz', label: 'Quiz', content: QuizTab },
           ]}
         />
-      </div>
+      </motion.div>
 
       {/* Lesson Editor Modal */}
       <Modal
@@ -691,7 +719,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                   <div className="space-y-4 pt-2">
                     {/* Lesson validation errors banner */}
                     {Object.keys(lessonErrors).length > 0 && (
-                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                      <div className="p-3 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-2">
                         <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
                         <div>
                           <p className="text-xs font-semibold text-red-800">Please fix the following:</p>
@@ -722,10 +750,10 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                             <button
                               key={type}
                               onClick={() => setLessonForm({ ...lessonForm, type })}
-                              className={`flex items-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors cursor-pointer ${
+                              className={`flex items-center gap-2 p-3 rounded-2xl border text-sm font-medium transition-all duration-200 cursor-pointer ${
                                 lessonForm.type === type
-                                  ? 'border-primary bg-primary-50 text-primary'
-                                  : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                                  ? 'border-primary/50 bg-primary-50 text-primary shadow-sm'
+                                  : 'border-gray-100 text-gray-600 hover:border-gray-300'
                               }`}
                             >
                               <Icon className="w-4 h-4" />
@@ -747,7 +775,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
 
                     {/* === VIDEO LESSON === */}
                     {lessonForm.type === 'video' && (
-                      <div className="space-y-4 p-4 bg-blue-50 rounded-lg">
+                      <div className="space-y-4 p-4 bg-blue-50/70 rounded-2xl border border-blue-100">
                         <FileUpload
                           label="Upload Video"
                           accept="video/*"
@@ -787,7 +815,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                           const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
                           if (ytMatch) {
                             return (
-                              <div className="rounded-lg overflow-hidden border border-gray-200">
+                              <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
                                 <iframe
                                   src={`https://www.youtube.com/embed/${ytMatch[1]}`}
                                   className="w-full aspect-video"
@@ -800,7 +828,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                           }
                           if (vimeoMatch) {
                             return (
-                              <div className="rounded-lg overflow-hidden border border-gray-200">
+                              <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
                                 <iframe
                                   src={`https://player.vimeo.com/video/${vimeoMatch[1]}`}
                                   className="w-full aspect-video"
@@ -814,7 +842,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                           // Direct video URL — show native player (only if not already shown by FileUpload)
                           if (url.startsWith('http') && !url.includes('youtube') && !url.includes('vimeo')) {
                             return (
-                              <div className="rounded-lg overflow-hidden bg-black border border-gray-200">
+                              <div className="rounded-2xl overflow-hidden bg-black border border-gray-100 shadow-sm">
                                 <video
                                   src={url}
                                   controls
@@ -844,7 +872,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
 
                     {/* === DOCUMENT LESSON === */}
                     {lessonForm.type === 'document' && (
-                      <div className="space-y-4 p-4 bg-emerald-50 rounded-lg">
+                      <div className="space-y-4 p-4 bg-emerald-50/70 rounded-2xl border border-emerald-100">
                         <FileUpload
                           label="Upload Document"
                           accept=".pdf,.doc,.docx,.pptx,.ppt,.xls,.xlsx,.txt"
@@ -874,7 +902,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
 
                     {/* === IMAGE LESSON === */}
                     {lessonForm.type === 'image' && (
-                      <div className="space-y-4 p-4 bg-amber-50 rounded-lg">
+                      <div className="space-y-4 p-4 bg-amber-50/70 rounded-2xl border border-amber-100">
                         <FileUpload
                           label="Upload Image"
                           accept="image/*"
@@ -925,7 +953,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                   <div className="pt-2 space-y-4">
                     <p className="text-sm text-gray-500">Add extra resources for learners (files or links).</p>
                     {lessonForm.attachments.map((att, idx) => (
-                      <div key={idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                      <div key={idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded-2xl">
                         {att.type === 'file' ? <Upload className="w-4 h-4 text-gray-400" /> : <LinkIcon className="w-4 h-4 text-gray-400" />}
                         <span className="text-sm flex-1">{att.title || att.url}</span>
                         <button

@@ -7,6 +7,7 @@ import { GraduationCap, BookOpen, Presentation, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { updateUserRole } from '@/lib/actions';
+import { motion } from 'framer-motion';
 
 type Role = 'learner' | 'instructor';
 
@@ -16,7 +17,6 @@ export default function ChooseRolePage() {
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Redirect when not authenticated or already onboarded (must be in useEffect)
   useEffect(() => {
     if (status === 'loading') return;
     if (!session?.user) {
@@ -29,10 +29,9 @@ export default function ChooseRolePage() {
     }
   }, [status, session, router]);
 
-  // Show spinner while loading, unauthenticated, or already-onboarded (redirect pending)
   if (status === 'loading' || !session?.user || !session.user.needsOnboarding) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -43,9 +42,7 @@ export default function ChooseRolePage() {
     setLoading(true);
     try {
       await updateUserRole(selectedRole);
-      // Refresh the JWT token with the new role from the DB
       await update();
-      // Redirect based on chosen role
       router.replace(selectedRole === 'instructor' ? '/admin/courses' : '/my-courses');
     } catch (err) {
       console.error('Failed to set role:', err);
@@ -69,11 +66,22 @@ export default function ChooseRolePage() {
   ];
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-      <div className="w-full max-w-2xl">
+    <div className="min-h-screen flex items-center justify-center bg-background p-6 relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute inset-0 -z-10 opacity-30">
+        <div className="absolute top-20 left-20 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl animate-float" />
+        <div className="absolute bottom-20 right-20 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl animate-float" style={{ animationDelay: '3s' }} />
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-2xl"
+      >
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
+        <div className="flex items-center justify-center gap-2.5 mb-8">
+          <div className="w-10 h-10 bg-gradient-to-br from-primary to-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-primary/20">
             <GraduationCap className="w-6 h-6 text-white" />
           </div>
           <span className="text-2xl font-bold text-gray-900">LearnSphere</span>
@@ -82,7 +90,7 @@ export default function ChooseRolePage() {
         {/* Heading */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Welcome, {session.user.firstName}!</h1>
-          <p className="mt-2 text-gray-600 text-lg">How would you like to use LearnSphere?</p>
+          <p className="mt-2 text-gray-500 text-lg">How would you like to use LearnSphere?</p>
         </div>
 
         {/* Role cards */}
@@ -90,43 +98,49 @@ export default function ChooseRolePage() {
           {roles.map(role => {
             const isSelected = selectedRole === role.value;
             return (
-              <button
+              <motion.button
                 key={role.value}
                 onClick={() => setSelectedRole(role.value)}
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
                 className={cn(
-                  'relative flex flex-col items-center text-center p-8 rounded-2xl border-2 transition-all cursor-pointer',
+                  'relative flex flex-col items-center text-center p-8 rounded-3xl border-2 transition-all duration-300 cursor-pointer',
                   isSelected
-                    ? 'border-primary bg-primary-50 shadow-lg shadow-primary/10'
-                    : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md'
+                    ? 'border-primary bg-white shadow-xl shadow-primary/10'
+                    : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-lg'
                 )}
               >
                 {/* Selection indicator */}
                 <div
                   className={cn(
-                    'absolute top-4 right-4 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors',
+                    'absolute top-4 right-4 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300',
                     isSelected
-                      ? 'border-primary bg-primary'
+                      ? 'border-primary bg-gradient-to-br from-primary to-indigo-600'
                       : 'border-gray-300'
                   )}
                 >
                   {isSelected && (
-                    <div className="w-2 h-2 rounded-full bg-white" />
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="w-2 h-2 rounded-full bg-white"
+                    />
                   )}
                 </div>
 
                 <div
                   className={cn(
-                    'w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-colors',
+                    'w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-all duration-300',
                     isSelected
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-100 text-gray-500'
+                      ? 'bg-gradient-to-br from-primary to-indigo-600 text-white shadow-lg shadow-primary/20'
+                      : 'bg-gray-100 text-gray-400'
                   )}
                 >
                   <role.icon className="w-8 h-8" />
                 </div>
 
                 <h3 className={cn(
-                  'text-lg font-semibold mb-2',
+                  'text-lg font-semibold mb-2 transition-colors',
                   isSelected ? 'text-primary' : 'text-gray-900'
                 )}>
                   {role.title}
@@ -134,7 +148,7 @@ export default function ChooseRolePage() {
                 <p className="text-sm text-gray-500 leading-relaxed">
                   {role.description}
                 </p>
-              </button>
+              </motion.button>
             );
           })}
         </div>
@@ -161,7 +175,7 @@ export default function ChooseRolePage() {
         <p className="text-center text-xs text-gray-400 mt-6">
           You can always change this later in your settings.
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }

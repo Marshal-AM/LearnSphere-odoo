@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { formatDate, formatDuration, getStatusColor, getStatusLabel } from '@/lib/utils';
+import { motion } from 'framer-motion';
 import type { LearnerCourseStatus, ReportingDashboardRow } from '@/lib/types';
 
 type ColumnKey =
@@ -59,41 +60,52 @@ export default function ReportingClient({ data }: { data: ReportingDashboardRow[
   const visibleColumns = columns.filter(c => c.visible);
 
   const stats = [
-    { label: 'Total Participants', value: totalParticipants, icon: Users, color: 'text-blue-600 bg-blue-100', filter: 'all' as const },
-    { label: 'Yet to Start', value: yetToStart, icon: Clock, color: 'text-gray-600 bg-gray-100', filter: 'yet_to_start' as LearnerCourseStatus },
-    { label: 'In Progress', value: inProgress, icon: PlayCircle, color: 'text-blue-600 bg-blue-100', filter: 'in_progress' as LearnerCourseStatus },
-    { label: 'Completed', value: completed, icon: CheckCircle2, color: 'text-green-600 bg-green-100', filter: 'completed' as LearnerCourseStatus },
+    { label: 'Total Participants', value: totalParticipants, icon: Users, gradient: 'from-blue-500 to-indigo-500', bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-700', filter: 'all' as const },
+    { label: 'Yet to Start', value: yetToStart, icon: Clock, gradient: 'from-gray-400 to-gray-500', bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', filter: 'yet_to_start' as LearnerCourseStatus },
+    { label: 'In Progress', value: inProgress, icon: PlayCircle, gradient: 'from-amber-400 to-orange-500', bg: 'bg-amber-50', border: 'border-amber-100', text: 'text-amber-700', filter: 'in_progress' as LearnerCourseStatus },
+    { label: 'Completed', value: completed, icon: CheckCircle2, gradient: 'from-emerald-400 to-teal-500', bg: 'bg-emerald-50', border: 'border-emerald-100', text: 'text-emerald-700', filter: 'completed' as LearnerCourseStatus },
   ];
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between mb-6"
+      >
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Reporting</h1>
-          <p className="text-sm text-gray-500 mt-1">Course-wise learner progress overview</p>
+          <p className="text-sm text-gray-400 mt-1">Course-wise learner progress overview</p>
         </div>
-      </div>
+      </motion.div>
 
       {/* Overview cards */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
+      >
         {stats.map(stat => (
-          <button
+          <motion.button
             key={stat.label}
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => setStatusFilter(stat.filter)}
-            className={`bg-white rounded-xl border p-4 text-left transition-all cursor-pointer ${
-              statusFilter === stat.filter ? 'border-primary ring-2 ring-primary/20' : 'border-gray-200 hover:border-gray-300'
+            className={`bg-white rounded-2xl border p-5 text-left transition-all duration-300 cursor-pointer ${
+              statusFilter === stat.filter ? 'border-primary ring-2 ring-primary/10 shadow-md' : `${stat.border} hover:shadow-md`
             }`}
           >
             <div className="flex items-center justify-between">
-              <div className={`p-2 rounded-lg ${stat.color}`}>
-                <stat.icon className="w-5 h-5" />
+              <div className={`p-2.5 rounded-xl bg-gradient-to-br ${stat.gradient} shadow-sm`}>
+                <stat.icon className="w-5 h-5 text-white" />
               </div>
-              <span className="text-2xl font-bold text-gray-900">{stat.value}</span>
+              <span className="text-3xl font-bold text-gray-900">{stat.value}</span>
             </div>
-            <p className="mt-2 text-sm text-gray-600">{stat.label}</p>
-          </button>
+            <p className="mt-3 text-sm text-gray-500 font-medium">{stat.label}</p>
+          </motion.button>
         ))}
-      </div>
+      </motion.div>
 
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
@@ -111,33 +123,33 @@ export default function ReportingClient({ data }: { data: ReportingDashboardRow[
 
       <div className="flex gap-4">
         {/* Table */}
-        <div className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+        <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
+              <tr className="border-b border-gray-100 bg-gray-50/50">
                 {visibleColumns.map(col => (
-                  <th key={col.key} className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-left whitespace-nowrap">{col.label}</th>
+                  <th key={col.key} className="px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider text-left whitespace-nowrap">{col.label}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-50">
               {filteredData.map((row, idx) => (
-                <tr key={row.enrollment_id} className="hover:bg-gray-50 transition-colors">
+                <tr key={row.enrollment_id} className="hover:bg-gray-50/50 transition-colors">
                   {visibleColumns.map(col => (
-                    <td key={col.key} className="px-4 py-3 text-sm whitespace-nowrap">
-                      {col.key === 'sr' && <span className="text-gray-500">{idx + 1}</span>}
+                    <td key={col.key} className="px-5 py-3.5 text-sm whitespace-nowrap">
+                      {col.key === 'sr' && <span className="text-gray-400 font-medium">{idx + 1}</span>}
                       {col.key === 'course_name' && <span className="font-medium text-gray-900">{row.course_name}</span>}
                       {col.key === 'participant_name' && (
                         <div>
                           <p className="font-medium text-gray-900">{row.participant_name}</p>
-                          <p className="text-xs text-gray-500">{row.participant_email}</p>
+                          <p className="text-xs text-gray-400">{row.participant_email}</p>
                         </div>
                       )}
-                      {col.key === 'enrolled_at' && <span className="text-gray-600">{formatDate(row.enrolled_at)}</span>}
-                      {col.key === 'started_at' && <span className="text-gray-600">{row.started_at ? formatDate(row.started_at) : '—'}</span>}
-                      {col.key === 'time_spent' && <span className="text-gray-600">{formatDuration(row.total_time_spent_minutes)}</span>}
+                      {col.key === 'enrolled_at' && <span className="text-gray-500">{formatDate(row.enrolled_at)}</span>}
+                      {col.key === 'started_at' && <span className="text-gray-500">{row.started_at ? formatDate(row.started_at) : '—'}</span>}
+                      {col.key === 'time_spent' && <span className="text-gray-500">{formatDuration(row.total_time_spent_minutes)}</span>}
                       {col.key === 'completion' && <div className="w-32"><ProgressBar value={row.completion_percentage} showLabel size="sm" /></div>}
-                      {col.key === 'completed_at' && <span className="text-gray-600">{row.completed_at ? formatDate(row.completed_at) : '—'}</span>}
+                      {col.key === 'completed_at' && <span className="text-gray-500">{row.completed_at ? formatDate(row.completed_at) : '—'}</span>}
                       {col.key === 'status' && <Badge className={getStatusColor(row.status)}>{getStatusLabel(row.status)}</Badge>}
                     </td>
                   ))}
@@ -152,20 +164,24 @@ export default function ReportingClient({ data }: { data: ReportingDashboardRow[
 
         {/* Column customizer side panel */}
         {columnPanelOpen && (
-          <div className="w-56 bg-white rounded-xl border border-gray-200 p-4 h-fit sticky top-24">
-            <div className="flex items-center justify-between mb-3">
+          <motion.div
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="w-56 bg-white rounded-2xl border border-gray-100 p-5 h-fit sticky top-24 shadow-sm"
+          >
+            <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-gray-900">Show/Hide Columns</h3>
-              <button onClick={() => setColumnPanelOpen(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer"><X className="w-4 h-4" /></button>
+              <button onClick={() => setColumnPanelOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"><X className="w-4 h-4" /></button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {columns.map(col => (
-                <label key={col.key} className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={col.visible} onChange={() => toggleColumn(col.key)} className="rounded border-gray-300 text-primary" />
-                  <span className="text-gray-700">{col.label}</span>
+                <label key={col.key} className="flex items-center gap-2.5 text-sm cursor-pointer group">
+                  <input type="checkbox" checked={col.visible} onChange={() => toggleColumn(col.key)} className="rounded-md border-gray-300 text-primary" />
+                  <span className="text-gray-600 group-hover:text-gray-900 transition-colors">{col.label}</span>
                 </label>
               ))}
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
     </div>

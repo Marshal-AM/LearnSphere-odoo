@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import { ReactNode, useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface DropdownProps {
   trigger: ReactNode;
@@ -27,17 +28,23 @@ export function Dropdown({ trigger, children, align = 'right', className }: Drop
   return (
     <div ref={ref} className={cn('relative inline-block', className)}>
       <div onClick={() => setOpen(!open)} className="cursor-pointer">{trigger}</div>
-      {open && (
-        <div
-          className={cn(
-            'absolute top-full mt-1 z-50 min-w-[180px] bg-white rounded-lg shadow-lg border border-gray-200 py-1 animate-in fade-in slide-in-from-top-2 duration-150',
-            align === 'right' ? 'right-0' : 'left-0'
-          )}
-          onClick={() => setOpen(false)}
-        >
-          {children}
-        </div>
-      )}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={cn(
+              'absolute top-full mt-2 z-50 min-w-[200px] bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 overflow-hidden',
+              align === 'right' ? 'right-0' : 'left-0'
+            )}
+            onClick={() => setOpen(false)}
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -55,7 +62,7 @@ export function DropdownItem({ children, onClick, danger, icon, className }: Dro
     <button
       onClick={onClick}
       className={cn(
-        'w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors cursor-pointer',
+        'w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition-colors duration-150 cursor-pointer',
         danger ? 'text-red-600 hover:bg-red-50' : 'text-gray-700 hover:bg-gray-50',
         className
       )}

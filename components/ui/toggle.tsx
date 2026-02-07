@@ -20,13 +20,13 @@ export function Toggle({ checked, onChange, label, description, disabled }: Togg
         disabled={disabled}
         onClick={() => !disabled && onChange(!checked)}
         className={cn(
-          'relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer',
-          checked ? 'bg-primary' : 'bg-gray-300'
+          'relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 cursor-pointer',
+          checked ? 'bg-gradient-to-r from-primary to-indigo-600' : 'bg-gray-300'
         )}
       >
         <span
           className={cn(
-            'inline-block h-4 w-4 rounded-full bg-white transition-transform duration-200 shadow-sm',
+            'inline-block h-4 w-4 rounded-full bg-white transition-transform duration-300 shadow-sm',
             checked ? 'translate-x-6' : 'translate-x-1'
           )}
         />

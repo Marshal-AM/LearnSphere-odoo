@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/input';
 import { Avatar } from '@/components/ui/avatar';
 import { formatDuration, formatDate } from '@/lib/utils';
 import { enrollInCourse, submitReview } from '@/lib/actions';
+import { motion } from 'framer-motion';
 import type { Course, Lesson, LessonProgress, CourseEnrollment, CourseReview, Tag, User } from '@/lib/types';
 
 interface Props {
@@ -88,10 +89,14 @@ export default function CourseDetailClient({
     <div>
       {/* Progress section */}
       {enrollment && (
-        <div className="bg-gradient-to-r from-primary-50 to-indigo-50 rounded-xl p-6 mb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-primary-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-primary/10"
+        >
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-gray-900">Your Progress</h3>
-            <span className="text-sm font-medium text-primary">
+            <span className="text-sm font-bold text-primary tabular-nums">
               {Math.round(enrollment.completion_percentage)}% complete
             </span>
           </div>
@@ -101,7 +106,7 @@ export default function CourseDetailClient({
               <BookOpen className="w-4 h-4" />
               {totalCount} Total
             </span>
-            <span className="flex items-center gap-1.5 text-green-600">
+            <span className="flex items-center gap-1.5 text-emerald-600">
               <CheckCircle2 className="w-4 h-4" />
               {completedCount} Completed
             </span>
@@ -110,7 +115,7 @@ export default function CourseDetailClient({
               {incompleteCount} Incomplete
             </span>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Lesson search */}
@@ -125,21 +130,21 @@ export default function CourseDetailClient({
       </div>
 
       {/* Lessons list */}
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {filteredLessons.map((lesson, idx) => {
           const status = getLessonStatus(lesson.id);
           const canAccess = enrollment || course.access_rule === 'open';
           return (
-            <div key={lesson.id} className="group">
+            <div key={lesson.id}>
               {canAccess ? (
                 <Link
                   href={`/learn/${course.slug}/${lesson.id}`}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex items-center gap-3 p-3.5 rounded-2xl hover:bg-gray-50 transition-all duration-200 group"
                 >
-                  <span className="text-sm text-gray-400 w-6">{idx + 1}</span>
+                  <span className="text-sm text-gray-400 w-6 tabular-nums">{idx + 1}</span>
                   <div className="flex-shrink-0">
                     {status === 'completed' ? (
-                      <CheckCircle2 className="w-5 h-5 text-blue-500" />
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                     ) : status === 'in_progress' ? (
                       <PlayCircle className="w-5 h-5 text-amber-500" />
                     ) : (
@@ -155,10 +160,10 @@ export default function CourseDetailClient({
                       {lesson.video_duration_minutes && ` • ${formatDuration(lesson.video_duration_minutes)}`}
                     </p>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
+                  <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-primary group-hover:translate-x-0.5 transition-all duration-200" />
                 </Link>
               ) : (
-                <div className="flex items-center gap-3 p-3 rounded-lg opacity-60">
+                <div className="flex items-center gap-3 p-3.5 rounded-2xl opacity-50">
                   <span className="text-sm text-gray-400 w-6">{idx + 1}</span>
                   <Lock className="w-5 h-5 text-gray-300" />
                   <div className="flex-1">
@@ -177,7 +182,7 @@ export default function CourseDetailClient({
   const ReviewsTab = (
     <div>
       {/* Average rating */}
-      <div className="flex items-center gap-6 mb-6 p-6 bg-gray-50 rounded-xl">
+      <div className="flex items-center gap-6 mb-6 p-6 bg-gray-50 rounded-2xl">
         <div className="text-center">
           <p className="text-4xl font-bold text-gray-900">{(course.average_rating || 0).toFixed(1)}</p>
           <StarRating rating={course.average_rating || 0} size="md" className="mt-1" />
@@ -198,7 +203,12 @@ export default function CourseDetailClient({
       {/* Reviews list */}
       <div className="space-y-4">
         {reviews.map(review => (
-          <div key={review.id} className="bg-white border border-gray-200 rounded-xl p-4">
+          <motion.div
+            key={review.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-sm transition-all duration-200"
+          >
             <div className="flex items-start gap-3">
               <Avatar firstName={review.user.first_name} lastName={review.user.last_name} size="md" />
               <div className="flex-1">
@@ -217,12 +227,14 @@ export default function CourseDetailClient({
                 )}
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
 
         {reviews.length === 0 && (
           <div className="text-center py-12 text-gray-400">
-            <Star className="w-10 h-10 mx-auto mb-3 opacity-50" />
+            <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+              <Star className="w-7 h-7 text-gray-300" />
+            </div>
             <p className="text-sm">No reviews yet. Be the first to share your experience!</p>
           </div>
         )}
@@ -233,10 +245,14 @@ export default function CourseDetailClient({
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Course header */}
-      <div className="flex flex-col lg:flex-row gap-8 mb-8">
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col lg:flex-row gap-8 mb-8"
+      >
         {/* Cover image */}
         <div className="lg:w-96 flex-shrink-0">
-          <div className="rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 to-indigo-100 aspect-video lg:aspect-[4/3]">
+          <div className="rounded-3xl overflow-hidden bg-gradient-to-br from-primary/10 to-indigo-100 aspect-video lg:aspect-[4/3] shadow-sm">
             {course.cover_image_url && (
               <img
                 src={course.cover_image_url}
@@ -260,7 +276,7 @@ export default function CourseDetailClient({
             </div>
           )}
 
-          <p className="mt-4 text-gray-600 leading-relaxed">{course.short_description}</p>
+          <p className="mt-4 text-gray-500 leading-relaxed">{course.short_description}</p>
 
           <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-gray-500">
             <span className="flex items-center gap-1.5">
@@ -331,17 +347,22 @@ export default function CourseDetailClient({
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6"
+      >
         <Tabs
           tabs={[
             { id: 'overview', label: 'Course Overview', content: OverviewTab },
             { id: 'reviews', label: `Ratings & Reviews (${course.total_reviews_count})`, content: ReviewsTab },
           ]}
         />
-      </div>
+      </motion.div>
 
       {/* Add Review Modal */}
       <Modal

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { registerUser } from '@/lib/actions';
+import { motion } from 'framer-motion';
 
 type Role = 'learner' | 'instructor';
 
@@ -50,7 +51,6 @@ export default function RegisterPage() {
         role: selectedRole,
       });
 
-      // Auto sign in after registration
       const result = await signIn('credentials', {
         email: form.email,
         password: form.password,
@@ -60,7 +60,6 @@ export default function RegisterPage() {
       if (result?.error) {
         setError('Registration succeeded but auto-login failed. Please sign in manually.');
       } else {
-        // Redirect based on chosen role
         router.push(selectedRole === 'instructor' ? '/admin/courses' : '/my-courses');
         router.refresh();
       }
@@ -72,7 +71,6 @@ export default function RegisterPage() {
   };
 
   const handleGoogleRegister = () => {
-    // Google users go through /choose-role to pick their role
     signIn('google', { callbackUrl: '/choose-role' });
   };
 
@@ -94,33 +92,46 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex">
       {/* Left side - branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-indigo-700 p-12 items-center justify-center">
-        <div className="max-w-md text-white">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600 p-12 items-center justify-center relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
+
+        <motion.div
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+          className="max-w-md text-white relative z-10"
+        >
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/20">
               <GraduationCap className="w-7 h-7 text-white" />
             </div>
             <span className="text-2xl font-bold">LearnSphere</span>
           </div>
-          <h1 className="text-3xl font-bold mb-4">Start your learning journey</h1>
-          <p className="text-white/80 text-lg leading-relaxed">
+          <h1 className="text-4xl font-bold mb-4 leading-tight">Start your learning journey</h1>
+          <p className="text-white/70 text-lg leading-relaxed">
             Join thousands of learners and instructors. Earn badges as you master new skills, or create courses to share your expertise.
           </p>
-        </div>
+        </motion.div>
       </div>
 
       {/* Right side - form */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-md">
-          <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center p-8 bg-background">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md"
+        >
+          <div className="lg:hidden flex items-center gap-2.5 mb-8">
+            <div className="w-9 h-9 bg-gradient-to-br from-primary to-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-primary/20">
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold">LearnSphere</span>
           </div>
 
           <h2 className="text-2xl font-bold text-gray-900">Create your account</h2>
-          <p className="mt-2 text-gray-600">
+          <p className="mt-2 text-gray-500">
             Already have an account?{' '}
             <Link href="/login" className="text-primary font-medium hover:underline">
               Sign in
@@ -129,26 +140,33 @@ export default function RegisterPage() {
 
           {/* Role selector */}
           <div className="mt-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">I want to…</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">I want to...</label>
             <div className="grid grid-cols-2 gap-3">
               {roles.map(role => {
                 const isSelected = selectedRole === role.value;
                 return (
-                  <button
+                  <motion.button
                     key={role.value}
                     type="button"
                     onClick={() => setSelectedRole(role.value)}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     className={cn(
-                      'flex flex-col items-center gap-1.5 p-4 rounded-xl border-2 transition-all cursor-pointer',
+                      'flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all duration-200 cursor-pointer',
                       isSelected
-                        ? 'border-primary bg-primary-50 text-primary'
+                        ? 'border-primary bg-primary-50 shadow-sm shadow-primary/10'
                         : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
                     )}
                   >
-                    <role.icon className={cn('w-6 h-6', isSelected ? 'text-primary' : 'text-gray-400')} />
-                    <span className="text-sm font-semibold">{role.label}</span>
+                    <div className={cn(
+                      'w-10 h-10 rounded-xl flex items-center justify-center transition-colors',
+                      isSelected ? 'bg-primary text-white' : 'bg-gray-100 text-gray-400'
+                    )}>
+                      <role.icon className="w-5 h-5" />
+                    </div>
+                    <span className={cn('text-sm font-semibold', isSelected && 'text-primary')}>{role.label}</span>
                     <span className="text-xs text-gray-400">{role.desc}</span>
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
@@ -158,7 +176,7 @@ export default function RegisterPage() {
           <div className="mt-5">
             <button
               onClick={handleGoogleRegister}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+              className="w-full flex items-center justify-center gap-3 px-5 py-3 border border-gray-200 rounded-2xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all duration-200 cursor-pointer hover:border-gray-300 hover:shadow-sm"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -172,14 +190,18 @@ export default function RegisterPage() {
 
           <div className="mt-5 flex items-center gap-4">
             <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-sm text-gray-400">or register with email</span>
+            <span className="text-sm text-gray-400 font-medium">or register with email</span>
             <div className="flex-1 h-px bg-gray-200" />
           </div>
 
           {error && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 p-4 bg-red-50 border border-red-100 rounded-2xl text-sm text-red-700"
+            >
               {error}
-            </div>
+            </motion.div>
           )}
 
           <form onSubmit={handleSubmit} className="mt-5 space-y-4">
@@ -228,12 +250,12 @@ export default function RegisterPage() {
             />
 
             <div className="flex items-start gap-2">
-              <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-primary mt-0.5" required />
-              <span className="text-sm text-gray-600">
+              <input type="checkbox" className="w-4 h-4 rounded-md border-gray-300 text-primary mt-0.5" required />
+              <span className="text-sm text-gray-500">
                 I agree to the{' '}
-                <a href="#" className="text-primary hover:underline">Terms of Service</a>
+                <a href="#" className="text-primary font-medium hover:underline">Terms of Service</a>
                 {' '}and{' '}
-                <a href="#" className="text-primary hover:underline">Privacy Policy</a>
+                <a href="#" className="text-primary font-medium hover:underline">Privacy Policy</a>
               </span>
             </div>
 
@@ -241,7 +263,7 @@ export default function RegisterPage() {
               {loading ? 'Creating account...' : 'Create account'}
             </Button>
           </form>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
