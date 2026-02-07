@@ -136,7 +136,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
           data.course_admin_id = adminId || null;
         }
         await updateCourse(course.id, data);
-        router.refresh();
+        router.push('/admin/courses');
       } catch (err: any) {
         // Fallback: surface unexpected DB errors as a generic alert
         setCourseErrors({ _global: err?.message || 'Failed to save course.' });
