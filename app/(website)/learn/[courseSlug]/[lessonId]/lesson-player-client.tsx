@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, ChevronLeft, ChevronRight, CheckCircle2, Circle,
   PlayCircle, Menu, X, FileText, Image as ImageIcon, HelpCircle,
-  Video, Download, ExternalLink, Trophy, PartyPopper,
+  Video, Download, ExternalLink, Trophy, PartyPopper, XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { formatDuration, getNextBadge } from '@/lib/utils';
 import { BADGE_LABELS, BadgeLevel, LessonType } from '@/lib/types';
 import { markLessonComplete, submitQuizAttempt } from '@/lib/actions';
+import type { QuizQuestionResult } from '@/lib/actions';
 import type { Course, Lesson, LessonAttachment, LessonProgress, CourseEnrollment, Quiz, QuizQuestion, QuizAttempt } from '@/lib/types';
 
 const typeIcons: Record<LessonType, React.ElementType> = {
@@ -87,6 +88,7 @@ export default function LessonPlayerClient({
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string[]>>({});
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [quizScore, setQuizScore] = useState(0);
+  const [questionResults, setQuestionResults] = useState<QuizQuestionResult[]>([]);
 
   // Points popup
   const [pointsPopup, setPointsPopup] = useState<{ show: boolean; points: number }>({ show: false, points: 0 });
@@ -118,21 +120,35 @@ export default function LessonPlayerClient({
         startTransition(async () => {
           const result = await submitQuizAttempt(quiz.id, enrollment.id, selectedAnswers);
           setQuizScore(result.correctCount);
+          setQuestionResults(result.questionResults);
           setQuizCompleted(true);
           if (result.pointsEarned > 0) {
             setPointsPopup({ show: true, points: result.pointsEarned });
           }
+          // Refresh to pick up the lesson progress change (quiz marked as done)
+          router.refresh();
         });
       } else {
         // Calculate score locally if no enrollment
         let correct = 0;
+        const localResults: QuizQuestionResult[] = [];
         quizQuestionsList.forEach(q => {
           const selected = selectedAnswers[q.id] || [];
           const isCorrect = q.correct_answer_ids.length === selected.length &&
             q.correct_answer_ids.every(id => selected.includes(id));
           if (isCorrect) correct++;
+          localResults.push({
+            questionId: q.id,
+            questionText: q.question_text,
+            options: q.options,
+            correctAnswerIds: q.correct_answer_ids,
+            selectedAnswerIds: selected,
+            isCorrect,
+            explanation: q.explanation || undefined,
+          });
         });
         setQuizScore(correct);
+        setQuestionResults(localResults);
         setQuizCompleted(true);
       }
     }
@@ -450,26 +466,106 @@ export default function LessonPlayerClient({
                 )}
 
                 {quizCompleted && (
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-8 text-center">
-                    <CheckCircle2 className="w-16 h-16 mx-auto text-green-500 mb-4" />
-                    <h2 className="text-xl font-bold text-gray-900 mb-2">Quiz Completed!</h2>
-                    <p className="text-gray-600 mb-4">
-                      You got {quizScore} out of {quizQuestionsList.length} correct
-                    </p>
-                    <div className="text-3xl font-bold text-primary mb-4">
-                      {Math.round((quizScore / quizQuestionsList.length) * 100)}%
+                  <div>
+                    {/* Score summary */}
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-8 text-center mb-6">
+                      <CheckCircle2 className="w-16 h-16 mx-auto text-green-500 mb-4" />
+                      <h2 className="text-xl font-bold text-gray-900 mb-2">Quiz Completed!</h2>
+                      <p className="text-gray-600 mb-2">
+                        You got {quizScore} out of {quizQuestionsList.length} correct
+                      </p>
+                      <div className="text-3xl font-bold text-primary mb-4">
+                        {Math.round((quizScore / quizQuestionsList.length) * 100)}%
+                      </div>
+                      <p className="text-sm text-gray-500 mb-4">
+                        This quiz has been marked as completed.
+                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setQuizStarted(false);
+                          setQuizCompleted(false);
+                          setCurrentQuestionIndex(0);
+                          setSelectedAnswers({});
+                          setQuestionResults([]);
+                        }}
+                      >
+                        Try Again
+                      </Button>
                     </div>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setQuizStarted(false);
-                        setQuizCompleted(false);
-                        setCurrentQuestionIndex(0);
-                        setSelectedAnswers({});
-                      }}
-                    >
-                      Try Again
-                    </Button>
+
+                    {/* Individual question results */}
+                    {questionResults.length > 0 && (
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-gray-900">Question Results</h3>
+                        {questionResults.map((qr, idx) => (
+                          <div
+                            key={qr.questionId}
+                            className={cn(
+                              'rounded-xl border p-5',
+                              qr.isCorrect
+                                ? 'border-green-200 bg-green-50'
+                                : 'border-red-200 bg-red-50'
+                            )}
+                          >
+                            <div className="flex items-start gap-3 mb-3">
+                              <div className="flex-shrink-0 mt-0.5">
+                                {qr.isCorrect ? (
+                                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                                ) : (
+                                  <XCircle className="w-5 h-5 text-red-500" />
+                                )}
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  Q{idx + 1}. {qr.questionText}
+                                </p>
+                              </div>
+                              <Badge variant={qr.isCorrect ? 'success' : 'error'}>
+                                {qr.isCorrect ? 'Correct' : 'Wrong'}
+                              </Badge>
+                            </div>
+
+                            <div className="ml-8 space-y-1.5">
+                              {qr.options.map(opt => {
+                                const isSelected = qr.selectedAnswerIds.includes(opt.id);
+                                const isCorrectOption = qr.correctAnswerIds.includes(opt.id);
+                                let optionClass = 'text-gray-600';
+                                let prefix = '';
+
+                                if (isCorrectOption && isSelected) {
+                                  optionClass = 'text-green-700 font-medium';
+                                  prefix = '✓ ';
+                                } else if (isCorrectOption) {
+                                  optionClass = 'text-green-600 font-medium';
+                                  prefix = '✓ ';
+                                } else if (isSelected) {
+                                  optionClass = 'text-red-600 line-through';
+                                  prefix = '✗ ';
+                                }
+
+                                return (
+                                  <p key={opt.id} className={cn('text-sm', optionClass)}>
+                                    {prefix}{opt.text}
+                                    {isSelected && !isCorrectOption && (
+                                      <span className="text-xs text-red-400 ml-1">(your answer)</span>
+                                    )}
+                                  </p>
+                                );
+                              })}
+                            </div>
+
+                            {qr.explanation && (
+                              <div className="ml-8 mt-3 p-3 bg-white/60 rounded-lg">
+                                <p className="text-xs text-gray-600">
+                                  <span className="font-medium">Explanation:</span> {qr.explanation}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

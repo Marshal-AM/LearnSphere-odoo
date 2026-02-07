@@ -89,41 +89,39 @@ export function FileUpload({
       setProgress(5);
 
       try {
-        // 1. Get presigned URL
-        const presignRes = await fetch('/api/upload/presign', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filename: file.name,
-            contentType: file.type,
-            folder: folder || 'uploads',
-          }),
-        });
+        // Build FormData and upload to our server-side endpoint
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder', folder || 'uploads');
 
-        if (!presignRes.ok) {
-          const body = await presignRes.json().catch(() => ({}));
-          throw new Error(body.error || 'Failed to get upload URL');
-        }
-
-        const { presignedUrl, fileUrl } = await presignRes.json();
-        setProgress(15);
-
-        // 2. Upload directly to S3 with progress
-        await new Promise<void>((resolve, reject) => {
+        // Upload with progress via XHR
+        const fileUrl = await new Promise<string>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           xhr.upload.onprogress = (e) => {
             if (e.lengthComputable) {
-              setProgress(15 + Math.round((e.loaded / e.total) * 85));
+              setProgress(Math.round((e.loaded / e.total) * 90));
             }
           };
           xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) resolve();
-            else reject(new Error(`Upload failed (${xhr.status})`));
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                resolve(data.url);
+              } catch {
+                reject(new Error('Invalid response'));
+              }
+            } else {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                reject(new Error(data.error || `Upload failed (${xhr.status})`));
+              } catch {
+                reject(new Error(`Upload failed (${xhr.status})`));
+              }
+            }
           };
           xhr.onerror = () => reject(new Error('Network error during upload'));
-          xhr.open('PUT', presignedUrl);
-          xhr.setRequestHeader('Content-Type', file.type);
-          xhr.send(file);
+          xhr.open('POST', '/api/upload');
+          xhr.send(formData);
         });
 
         setProgress(100);

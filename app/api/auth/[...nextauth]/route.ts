@@ -27,9 +27,11 @@ export const authOptions: NextAuthOptions = {
 
         if (existingUser) {
           // Existing user — link Google info and sign in
+          // Note: We do NOT overwrite avatar_url with the Google profile picture.
+          // Users should set their own profile picture via the profile page.
           await query(
-            'UPDATE users SET google_id = $1, oauth_provider = $2, avatar_url = COALESCE(NULLIF(avatar_url, \'\'), $3), last_login_at = NOW() WHERE id = $4',
-            [profile.sub, 'google', profile.picture, existingUser.id]
+            'UPDATE users SET google_id = $1, oauth_provider = $2, last_login_at = NOW() WHERE id = $3',
+            [profile.sub, 'google', existingUser.id]
           );
           return {
             id: existingUser.id,
@@ -39,12 +41,13 @@ export const authOptions: NextAuthOptions = {
             roles: existingUser.roles as any,
             totalPoints: existingUser.total_points,
             currentBadge: existingUser.current_badge as any,
-            avatarUrl: existingUser.avatar_url || profile.picture,
+            avatarUrl: existingUser.avatar_url || undefined,
             isNewUser: false,
           };
         } else {
           // Brand-new Google user — create with default learner role.
           // They'll be redirected to /choose-role to pick instructor vs learner.
+          // Note: We do NOT store the Google profile picture. Users set their own via profile page.
           const nameParts = (profile.name || '').split(' ');
           const firstName = nameParts[0] || 'User';
           const lastName = nameParts.slice(1).join(' ') || '';
@@ -58,10 +61,10 @@ export const authOptions: NextAuthOptions = {
             total_points: number;
             current_badge: string;
           }>(
-            `INSERT INTO users (email, first_name, last_name, avatar_url, google_id, oauth_provider, email_verified, email_verified_at, last_login_at)
-             VALUES ($1, $2, $3, $4, $5, 'google', true, NOW(), NOW())
+            `INSERT INTO users (email, first_name, last_name, google_id, oauth_provider, email_verified, email_verified_at, last_login_at)
+             VALUES ($1, $2, $3, $4, 'google', true, NOW(), NOW())
              RETURNING id, email, first_name, last_name, roles, total_points, current_badge`,
-            [email, firstName, lastName, profile.picture, profile.sub]
+            [email, firstName, lastName, profile.sub]
           );
 
           return {
@@ -72,7 +75,7 @@ export const authOptions: NextAuthOptions = {
             roles: newUser!.roles as any,
             totalPoints: newUser!.total_points,
             currentBadge: newUser!.current_badge as any,
-            avatarUrl: profile.picture,
+            avatarUrl: undefined,
             isNewUser: true,
           };
         }

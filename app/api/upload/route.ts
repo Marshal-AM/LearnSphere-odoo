@@ -2,14 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { queryOne } from '@/lib/db';
-import { getPresignedUploadUrl, buildStorageKey } from '@/lib/storage';
+import { uploadToS3, buildStorageKey } from '@/lib/storage';
 
 /**
  * Server-side upload: receives a file via FormData, uploads it to S3,
  * records in DB, and returns the public URL.
- *
- * For large files, prefer the /api/upload/presign route for direct
- * browser-to-S3 uploads.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -28,21 +25,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // Build S3 key and get presigned URL
-    const key = buildStorageKey(folder, file.name);
-    const { presignedUrl, fileUrl } = await getPresignedUploadUrl(key, file.type);
-
-    // Upload to S3
+    // Read file into buffer
     const bytes = await file.arrayBuffer();
-    const uploadRes = await fetch(presignedUrl, {
-      method: 'PUT',
-      body: bytes,
-      headers: { 'Content-Type': file.type },
-    });
+    const buffer = Buffer.from(bytes);
 
-    if (!uploadRes.ok) {
-      throw new Error(`S3 upload failed: ${uploadRes.status}`);
-    }
+    // Build S3 key and upload directly
+    const key = buildStorageKey(folder, file.name);
+    const fileUrl = await uploadToS3(key, buffer, file.type);
 
     // Record in database
     const uploaded = await queryOne<{ id: string; file_url: string }>(

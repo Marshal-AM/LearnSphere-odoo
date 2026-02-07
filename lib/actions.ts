@@ -4,6 +4,7 @@ import { query, queryOne } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { hash } from 'bcryptjs';
 import { slugify } from '@/lib/utils';
+import { revalidatePath } from 'next/cache';
 
 // =====================================================
 // COURSE ACTIONS
@@ -19,6 +20,8 @@ export async function createCourse(title: string) {
      RETURNING id, slug`,
     [title, slug, session.user.id]
   );
+
+  revalidatePath('/admin/courses');
   return course;
 }
 
@@ -61,6 +64,9 @@ export async function updateCourse(courseId: string, data: {
     `UPDATE courses SET ${sets.join(', ')} WHERE id = $${idx}`,
     params
   );
+
+  revalidatePath('/admin/courses');
+  revalidatePath(`/admin/courses/${courseId}`);
 }
 
 export async function deleteCourse(courseId: string) {
@@ -71,6 +77,8 @@ export async function deleteCourse(courseId: string) {
     `UPDATE courses SET deleted_at = NOW() WHERE id = $1`,
     [courseId]
   );
+
+  revalidatePath('/admin/courses');
 }
 
 // =====================================================
@@ -118,6 +126,8 @@ export async function createLesson(courseId: string, data: {
       data.image_allow_download ?? true, data.quiz_id || null,
     ]
   );
+
+  revalidatePath(`/admin/courses/${courseId}`);
   return lesson;
 }
 
@@ -239,7 +249,29 @@ export async function markLessonComplete(lessonId: string, courseId: string, enr
 // =====================================================
 // QUIZ ATTEMPT ACTIONS
 // =====================================================
-export async function submitQuizAttempt(quizId: string, enrollmentId: string, answers: Record<string, string[]>) {
+export interface QuizQuestionResult {
+  questionId: string;
+  questionText: string;
+  options: { id: string; text: string }[];
+  correctAnswerIds: string[];
+  selectedAnswerIds: string[];
+  isCorrect: boolean;
+  explanation?: string;
+}
+
+export async function submitQuizAttempt(
+  quizId: string,
+  enrollmentId: string,
+  answers: Record<string, string[]>
+): Promise<{
+  attemptId: string;
+  correctCount: number;
+  totalQuestions: number;
+  scorePercentage: number;
+  passed: boolean;
+  pointsEarned: number;
+  questionResults: QuizQuestionResult[];
+}> {
   const session = await getSession();
   if (!session?.user) throw new Error('Unauthorized');
 
@@ -251,29 +283,48 @@ export async function submitQuizAttempt(quizId: string, enrollmentId: string, an
   const attemptNumber = parseInt(existingCount?.count || '0') + 1;
 
   // Get questions to calculate score
-  const questions = await query<{ id: string; correct_answer_ids: string[] }>(
-    `SELECT id, correct_answer_ids FROM quiz_questions WHERE quiz_id = $1 AND deleted_at IS NULL`,
+  const questions = await query<{
+    id: string;
+    question_text: string;
+    options: { id: string; text: string }[];
+    correct_answer_ids: string[];
+    explanation: string | null;
+  }>(
+    `SELECT id, question_text, options, correct_answer_ids, explanation FROM quiz_questions WHERE quiz_id = $1 AND deleted_at IS NULL ORDER BY sequence_order`,
     [quizId]
   );
 
   let correctCount = 0;
+  const questionResults: QuizQuestionResult[] = [];
+
   for (const q of questions) {
     const selected = answers[q.id] || [];
-    const isCorrect = q.correct_answer_ids.length === selected.length &&
-      q.correct_answer_ids.every((id: string) => selected.includes(id));
+    const correctIds = Array.isArray(q.correct_answer_ids) ? q.correct_answer_ids : [];
+    const isCorrect = correctIds.length === selected.length &&
+      correctIds.every((id: string) => selected.includes(id));
     if (isCorrect) correctCount++;
+
+    questionResults.push({
+      questionId: q.id,
+      questionText: q.question_text,
+      options: q.options,
+      correctAnswerIds: correctIds,
+      selectedAnswerIds: selected,
+      isCorrect,
+      explanation: q.explanation || undefined,
+    });
   }
 
   const scorePercentage = questions.length > 0 ? (correctCount / questions.length) * 100 : 0;
 
   // Get quiz passing percentage
-  const quiz = await queryOne<{ passing_percentage: number }>(
-    `SELECT passing_percentage FROM quizzes WHERE id = $1`,
+  const quiz = await queryOne<{ passing_percentage: number; course_id: string }>(
+    `SELECT passing_percentage, course_id FROM quizzes WHERE id = $1`,
     [quizId]
   );
   const passed = scorePercentage >= (quiz?.passing_percentage || 70);
 
-  // Create attempt
+  // Create attempt — always mark as completed
   const attempt = await queryOne<{ id: string; points_earned: number }>(
     `INSERT INTO quiz_attempts (user_id, quiz_id, enrollment_id, attempt_number, total_questions, correct_answers, score_percentage, is_completed, passed, completed_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8, NOW())
@@ -284,8 +335,9 @@ export async function submitQuizAttempt(quizId: string, enrollmentId: string, an
   // Insert individual answers
   for (const q of questions) {
     const selected = answers[q.id] || [];
-    const isCorrect = q.correct_answer_ids.length === selected.length &&
-      q.correct_answer_ids.every((id: string) => selected.includes(id));
+    const correctIds = Array.isArray(q.correct_answer_ids) ? q.correct_answer_ids : [];
+    const isCorrect = correctIds.length === selected.length &&
+      correctIds.every((id: string) => selected.includes(id));
     await query(
       `INSERT INTO quiz_answers (attempt_id, question_id, selected_answer_ids, is_correct)
        VALUES ($1, $2, $3, $4)`,
@@ -293,7 +345,31 @@ export async function submitQuizAttempt(quizId: string, enrollmentId: string, an
     );
   }
 
-  return { attemptId: attempt!.id, correctCount, totalQuestions: questions.length, scorePercentage, passed, pointsEarned: attempt!.points_earned || 0 };
+  // Always mark the quiz lesson as complete (regardless of score)
+  if (quiz?.course_id) {
+    const quizLesson = await queryOne<{ id: string }>(
+      `SELECT id FROM lessons WHERE quiz_id = $1 AND deleted_at IS NULL LIMIT 1`,
+      [quizId]
+    );
+    if (quizLesson) {
+      await query(
+        `INSERT INTO lesson_progress (user_id, lesson_id, course_id, enrollment_id, is_completed, completed_at, time_spent_minutes)
+         VALUES ($1, $2, $3, $4, true, NOW(), 0)
+         ON CONFLICT (user_id, lesson_id) DO UPDATE SET is_completed = true, completed_at = COALESCE(lesson_progress.completed_at, NOW())`,
+        [session.user.id, quizLesson.id, quiz.course_id, enrollmentId]
+      );
+    }
+  }
+
+  return {
+    attemptId: attempt!.id,
+    correctCount,
+    totalQuestions: questions.length,
+    scorePercentage,
+    passed,
+    pointsEarned: attempt!.points_earned || 0,
+    questionResults,
+  };
 }
 
 // =====================================================
@@ -369,4 +445,36 @@ export async function updateUserRole(role: 'learner' | 'instructor') {
     `UPDATE users SET roles = $1::user_role[] WHERE id = $2`,
     [`{${role}}`, session.user.id]
   );
+}
+
+// =====================================================
+// PROFILE ACTIONS
+// =====================================================
+export async function updateProfile(data: {
+  first_name?: string;
+  last_name?: string;
+  avatar_url?: string;
+}) {
+  const session = await getSession();
+  if (!session?.user) throw new Error('Unauthorized');
+
+  const sets: string[] = [];
+  const params: unknown[] = [];
+  let idx = 1;
+
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) {
+      sets.push(`${key} = $${idx}`);
+      params.push(value);
+      idx++;
+    }
+  }
+
+  if (sets.length === 0) return;
+
+  sets.push(`updated_at = NOW()`);
+  params.push(session.user.id);
+  await query(`UPDATE users SET ${sets.join(', ')} WHERE id = $${idx}`, params);
+
+  revalidatePath('/profile');
 }

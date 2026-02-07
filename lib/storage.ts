@@ -1,10 +1,10 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 /**
- * S3-compatible storage client.
+ * S3-compatible storage client — PUBLIC bucket mode.
  *
- * Works with AWS S3, Cloudflare R2, DigitalOcean Spaces, MinIO, Supabase Storage, etc.
+ * The bucket is assumed to be publicly readable. All uploads go directly
+ * via the server using PutObjectCommand (no presigning needed).
  *
  * Required env vars:
  *   S3_REGION          – e.g. "us-east-1" or "auto" for R2
@@ -12,9 +12,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
  *   S3_ACCESS_KEY_ID
  *   S3_SECRET_ACCESS_KEY
  *   S3_BUCKET          – bucket name
- *   S3_PUBLIC_URL      – public CDN/bucket URL for reading files (e.g. "https://cdn.example.com")
- *
- * CORS: Make sure your bucket allows PUT from your app's origin for presigned uploads.
+ *   S3_PUBLIC_URL      – public CDN/bucket URL for reading files
  */
 
 let _s3: S3Client | null = null;
@@ -38,30 +36,38 @@ function getS3Client(): S3Client {
 const bucket = () => process.env.S3_BUCKET || 'learnsphere';
 
 /**
- * Generate a presigned PUT URL for direct browser-to-S3 upload.
+ * Upload a file buffer directly to S3 and return its public URL.
  */
-export async function getPresignedUploadUrl(
+export async function uploadToS3(
   key: string,
+  body: Buffer | Uint8Array,
   contentType: string,
-  expiresIn = 3600,
-): Promise<{ presignedUrl: string; fileUrl: string; key: string }> {
+): Promise<string> {
   const s3 = getS3Client();
 
   const command = new PutObjectCommand({
     Bucket: bucket(),
     Key: key,
+    Body: body,
     ContentType: contentType,
   });
 
-  const presignedUrl = await getSignedUrl(s3, command, { expiresIn });
+  await s3.send(command);
 
-  // Build the public read URL
+  return getPublicUrl(key);
+}
+
+/**
+ * Build the public read URL for a given S3 key.
+ */
+export function getPublicUrl(key: string): string {
   const publicBase = process.env.S3_PUBLIC_URL;
-  const fileUrl = publicBase
-    ? `${publicBase.replace(/\/$/, '')}/${key}`
-    : presignedUrl.split('?')[0]; // fallback: unsigned URL (bucket must allow public read)
-
-  return { presignedUrl, fileUrl, key };
+  if (publicBase) {
+    return `${publicBase.replace(/\/$/, '')}/${key}`;
+  }
+  // Fallback: construct from endpoint + bucket
+  const endpoint = process.env.S3_ENDPOINT || `https://s3.${process.env.S3_REGION || 'us-east-1'}.amazonaws.com`;
+  return `${endpoint}/${bucket()}/${key}`;
 }
 
 /**

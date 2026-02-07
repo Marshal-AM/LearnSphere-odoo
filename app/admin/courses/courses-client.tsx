@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Plus, LayoutGrid, List, Eye, Clock, BookOpen, Share2,
-  Edit, MoreVertical, Globe,
+  Edit, MoreVertical, Globe, GripVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,9 +15,15 @@ import { Input } from '@/components/ui/input';
 import { Dropdown, DropdownItem } from '@/components/ui/dropdown';
 import { formatDuration } from '@/lib/utils';
 import { createCourse } from '@/lib/actions';
-import type { Course, Tag } from '@/lib/types';
+import type { Course, CourseStatus, Tag } from '@/lib/types';
 
 type ViewMode = 'kanban' | 'list';
+
+const KANBAN_COLUMNS: { status: CourseStatus; label: string; color: string; bgColor: string }[] = [
+  { status: 'draft', label: 'Draft', color: 'text-amber-700', bgColor: 'bg-amber-50 border-amber-200' },
+  { status: 'published', label: 'Published', color: 'text-green-700', bgColor: 'bg-green-50 border-green-200' },
+  { status: 'archived', label: 'Archived', color: 'text-gray-600', bgColor: 'bg-gray-50 border-gray-300' },
+];
 
 export default function CoursesDashboardClient({
   courses,
@@ -60,6 +66,84 @@ export default function CoursesDashboardClient({
       });
     }
   };
+
+  const CourseCard = ({ course }: { course: Course }) => (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden group">
+      {/* Cover image */}
+      <div className="relative h-36 bg-gradient-to-br from-primary/20 to-indigo-100">
+        {course.cover_image_url && (
+          <img
+            src={course.cover_image_url}
+            alt={course.title}
+            className="w-full h-full object-cover"
+          />
+        )}
+        {/* Actions */}
+        <div className="absolute top-2 right-2">
+          <Dropdown
+            trigger={
+              <div className="p-1.5 bg-white/90 rounded-lg hover:bg-white shadow-sm">
+                <MoreVertical className="w-4 h-4 text-gray-600" />
+              </div>
+            }
+          >
+            <DropdownItem
+              icon={<Edit className="w-4 h-4" />}
+              onClick={() => router.push(`/admin/courses/${course.id}`)}
+            >
+              Edit
+            </DropdownItem>
+            <DropdownItem
+              icon={<Share2 className="w-4 h-4" />}
+              onClick={() => handleShare(course.slug, course.id)}
+            >
+              {copiedId === course.id ? 'Link Copied!' : 'Share'}
+            </DropdownItem>
+          </Dropdown>
+        </div>
+      </div>
+      {/* Content */}
+      <div className="p-3">
+        <Link
+          href={`/admin/courses/${course.id}`}
+          className="text-sm font-semibold text-gray-900 hover:text-primary transition-colors line-clamp-2"
+        >
+          {course.title}
+        </Link>
+        {/* Tags */}
+        {course.tags && course.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {course.tags.slice(0, 2).map(tag => {
+              const tagObj = tags.find(t => t.name === tag);
+              return (
+                <Badge key={tag} color={tagObj?.color} className="text-[10px]">
+                  {tag}
+                </Badge>
+              );
+            })}
+            {course.tags.length > 2 && (
+              <span className="text-[10px] text-gray-400">+{course.tags.length - 2}</span>
+            )}
+          </div>
+        )}
+        {/* Stats */}
+        <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+          <span className="flex items-center gap-0.5">
+            <BookOpen className="w-3 h-3" />
+            {course.total_lessons_count}
+          </span>
+          <span className="flex items-center gap-0.5">
+            <Clock className="w-3 h-3" />
+            {formatDuration(course.total_duration_minutes)}
+          </span>
+          <span className="flex items-center gap-0.5">
+            <Eye className="w-3 h-3" />
+            {course.views_count}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div>
@@ -107,103 +191,39 @@ export default function CoursesDashboardClient({
         </div>
       </div>
 
-      {/* Kanban View */}
+      {/* Kanban View — columns grouped by status */}
       {viewMode === 'kanban' && (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCourses.map(course => (
-            <div
-              key={course.id}
-              className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden group"
-            >
-              {/* Cover image */}
-              <div className="relative h-40 bg-gradient-to-br from-primary/20 to-indigo-100">
-                {course.cover_image_url && (
-                  <img
-                    src={course.cover_image_url}
-                    alt={course.title}
-                    className="w-full h-full object-cover"
-                  />
-                )}
-                {course.status === 'published' && (
-                  <div className="absolute top-3 left-3">
-                    <Badge variant="success" className="flex items-center gap-1">
-                      <Globe className="w-3 h-3" />
-                      Published
-                    </Badge>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {KANBAN_COLUMNS.map(col => {
+            const columnCourses = filteredCourses.filter(c => c.status === col.status);
+            return (
+              <div key={col.status} className="flex flex-col min-h-[200px]">
+                {/* Column header */}
+                <div className={`flex items-center justify-between px-4 py-2.5 rounded-t-xl border ${col.bgColor}`}>
+                  <div className="flex items-center gap-2">
+                    <GripVertical className="w-4 h-4 text-gray-400" />
+                    <h3 className={`text-sm font-semibold ${col.color}`}>{col.label}</h3>
                   </div>
-                )}
-                {course.status === 'draft' && (
-                  <div className="absolute top-3 left-3">
-                    <Badge variant="warning">Draft</Badge>
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="absolute top-3 right-3">
-                  <Dropdown
-                    trigger={
-                      <div className="p-1.5 bg-white/90 rounded-lg hover:bg-white shadow-sm">
-                        <MoreVertical className="w-4 h-4 text-gray-600" />
-                      </div>
-                    }
-                  >
-                    <DropdownItem
-                      icon={<Edit className="w-4 h-4" />}
-                      onClick={() => router.push(`/admin/courses/${course.id}`)}
-                    >
-                      Edit
-                    </DropdownItem>
-                    <DropdownItem
-                      icon={<Share2 className="w-4 h-4" />}
-                      onClick={() => handleShare(course.slug, course.id)}
-                    >
-                      {copiedId === course.id ? 'Link Copied!' : 'Share'}
-                    </DropdownItem>
-                  </Dropdown>
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="p-4">
-                <Link
-                  href={`/admin/courses/${course.id}`}
-                  className="text-base font-semibold text-gray-900 hover:text-primary transition-colors line-clamp-2"
-                >
-                  {course.title}
-                </Link>
-
-                {/* Tags */}
-                {course.tags && course.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {course.tags.map(tag => {
-                      const tagObj = tags.find(t => t.name === tag);
-                      return (
-                        <Badge key={tag} color={tagObj?.color}>
-                          {tag}
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Stats */}
-                <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
-                  <span className="flex items-center gap-1">
-                    <Eye className="w-3.5 h-3.5" />
-                    {course.views_count}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <BookOpen className="w-3.5 h-3.5" />
-                    {course.total_lessons_count} lessons
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5" />
-                    {formatDuration(course.total_duration_minutes)}
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${col.bgColor} ${col.color}`}>
+                    {columnCourses.length}
                   </span>
                 </div>
+
+                {/* Column body */}
+                <div className="flex-1 bg-gray-50/60 border border-t-0 border-gray-200 rounded-b-xl p-3 space-y-3">
+                  {columnCourses.length === 0 ? (
+                    <div className="flex items-center justify-center h-32 text-sm text-gray-400">
+                      No {col.label.toLowerCase()} courses
+                    </div>
+                  ) : (
+                    columnCourses.map(course => (
+                      <CourseCard key={course.id} course={course} />
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

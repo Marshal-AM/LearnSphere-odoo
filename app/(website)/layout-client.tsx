@@ -95,7 +95,7 @@ export default function WebsiteLayoutClient({ children, user }: { children: Reac
                         Admin Dashboard
                       </DropdownItem>
                     )}
-                    <DropdownItem icon={<UserIcon className="w-4 h-4" />}>Profile</DropdownItem>
+                    <DropdownItem icon={<UserIcon className="w-4 h-4" />} onClick={() => window.location.href = '/profile'}>Profile</DropdownItem>
                     <div className="border-t border-gray-100" />
                     <DropdownItem icon={<LogOut className="w-4 h-4" />} onClick={() => signOut({ callbackUrl: '/login' })}>
                       Sign out
