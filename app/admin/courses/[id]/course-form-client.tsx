@@ -3,15 +3,17 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Eye, UserPlus, Mail, Upload, Video, FileText,
   Image as ImageIcon, HelpCircle, MoreVertical, Edit, Trash2, Plus,
-  GripVertical, ExternalLink, Link as LinkIcon, AlertTriangle, Sparkles,
+  GripVertical, ExternalLink, Link as LinkIcon, AlertTriangle, Camera,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input, Textarea, Select } from '@/components/ui/input';
+import { Input, Textarea } from '@/components/ui/input';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { Tabs } from '@/components/ui/tabs';
 import { Toggle } from '@/components/ui/toggle';
 import { Modal } from '@/components/ui/modal';
@@ -21,7 +23,7 @@ import { FileUpload } from '@/components/ui/file-upload';
 import { formatDuration, formatFileSize } from '@/lib/utils';
 import {
   updateCourse, createLesson, updateLesson, deleteLesson,
-  deleteQuiz, sendInvitation, contactAttendees,
+  deleteQuiz, sendInvitation,
 } from '@/lib/actions';
 import type { Course, Lesson, Quiz, Tag, LessonType, CourseVisibility, CourseAccessRule, User } from '@/lib/types';
 
@@ -132,14 +134,12 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
           status: isPublished ? 'published' : 'draft',
           cover_image_url: coverImageUrl || undefined,
         };
-        // Only admin can change the course admin
         if (isAdmin) {
           data.course_admin_id = adminId || null;
         }
         await updateCourse(course.id, data);
         router.push('/admin/courses');
       } catch (err: any) {
-        // Fallback: surface unexpected DB errors as a generic alert
         setCourseErrors({ _global: err?.message || 'Failed to save course.' });
       }
     });
@@ -265,7 +265,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
     });
   };
 
-  // Content Tab
+  // ─── Tab: Content ───
   const ContentTab = (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -281,12 +281,12 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
           return (
             <div
               key={lesson.id}
-              className="flex items-center gap-3 p-3 bg-gray-50/80 rounded-2xl hover:bg-gray-100/80 transition-all duration-200 group hover:shadow-sm"
+              className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
             >
               <GripVertical className="w-4 h-4 text-gray-300 cursor-grab" />
               <span className="text-sm font-medium text-gray-400 w-6">{idx + 1}</span>
-              <div className="p-1.5 rounded-xl bg-white border border-gray-100">
-                <Icon className="w-4 h-4 text-primary" />
+              <div className="p-1.5 rounded bg-white border border-gray-200">
+                <Icon className="w-4 h-4 text-gray-500" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{lesson.title}</p>
@@ -298,7 +298,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
               </div>
               <Dropdown
                 trigger={
-                  <div className="p-1.5 rounded-xl opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-all duration-200">
+                  <div className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-opacity">
                     <MoreVertical className="w-4 h-4 text-gray-500" />
                   </div>
                 }
@@ -327,7 +327,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
     </div>
   );
 
-  // Description Tab
+  // ─── Tab: Description ───
   const DescriptionTab = (
     <div>
       <Textarea
@@ -341,110 +341,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
     </div>
   );
 
-  // Options Tab
-  const OptionsTab = (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Visibility</h3>
-        <p className="text-xs text-gray-500 mb-3">Decide who can see this course</p>
-        <div className="space-y-2">
-          {[
-            { value: 'everyone' as CourseVisibility, label: 'Everyone', desc: 'Course visible to all visitors' },
-            { value: 'signed_in' as CourseVisibility, label: 'Signed In', desc: 'Only logged-in users can see' },
-          ].map(opt => (
-            <label
-              key={opt.value}
-              className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all duration-200 ${
-                visibility === opt.value ? 'border-primary/50 bg-primary-50 shadow-sm' : 'border-gray-100 hover:border-gray-300'
-              }`}
-            >
-              <input
-                type="radio"
-                name="visibility"
-                value={opt.value}
-                checked={visibility === opt.value}
-                onChange={() => setVisibility(opt.value)}
-                className="mt-0.5"
-              />
-              <div>
-                <p className="text-sm font-medium text-gray-900">{opt.label}</p>
-                <p className="text-xs text-gray-500">{opt.desc}</p>
-              </div>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Access Rule</h3>
-        <p className="text-xs text-gray-500 mb-3">Decide who can start/learn the course</p>
-        <div className="space-y-2">
-          {[
-            { value: 'open' as CourseAccessRule, label: 'Open', desc: 'Anyone can start the course' },
-            { value: 'on_invitation' as CourseAccessRule, label: 'On Invitation', desc: 'Only invited/enrolled users can access lessons' },
-            { value: 'on_payment' as CourseAccessRule, label: 'On Payment', desc: 'Users must purchase to access' },
-          ].map(opt => (
-            <label
-              key={opt.value}
-              className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all duration-200 ${
-                accessRule === opt.value ? 'border-primary/50 bg-primary-50 shadow-sm' : 'border-gray-100 hover:border-gray-300'
-              }`}
-            >
-              <input
-                type="radio"
-                name="accessRule"
-                value={opt.value}
-                checked={accessRule === opt.value}
-                onChange={() => setAccessRule(opt.value)}
-                className="mt-0.5"
-              />
-              <div>
-                <p className="text-sm font-medium text-gray-900">{opt.label}</p>
-                <p className="text-xs text-gray-500">{opt.desc}</p>
-              </div>
-            </label>
-          ))}
-        </div>
-
-        {accessRule === 'on_payment' && (
-          <div className="mt-4 p-4 bg-amber-50 rounded-2xl border border-amber-100">
-            <Input
-              label="Price (USD)"
-              type="number"
-              value={price}
-              onChange={e => { setPrice(e.target.value); setCourseErrors(prev => { const { price: _, ...rest } = prev; return rest; }); }}
-              placeholder="49.99"
-            />
-            {(!price || parseFloat(price) <= 0) && (
-              <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3 flex-shrink-0" />
-                A price greater than $0 is required for paid courses
-              </p>
-            )}
-            <FieldError field="price" errors={courseErrors} />
-          </div>
-        )}
-      </div>
-
-      {/* Course Admin — only shown to admin users */}
-      {isAdmin && (
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Course Admin</h3>
-          <Select
-            label="Responsible / Course Admin"
-            value={adminId}
-            onChange={e => setAdminId((e.target as HTMLSelectElement).value)}
-            options={[
-              { value: '', label: 'Select a user...' },
-              ...instructors.map(u => ({ value: u.id, label: `${u.first_name} ${u.last_name}` })),
-            ]}
-          />
-        </div>
-      )}
-    </div>
-  );
-
-  // Quiz Tab
+  // ─── Tab: Quiz ───
   const QuizTab = (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -460,10 +357,10 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
         {initialQuizzes.map(quiz => (
           <div
             key={quiz.id}
-            className="flex items-center justify-between p-3 bg-gray-50/80 rounded-2xl hover:bg-gray-100/80 transition-all duration-200 group hover:shadow-sm"
+            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-white rounded-xl border border-gray-100">
+              <div className="p-2 bg-white rounded-lg border border-gray-200">
                 <HelpCircle className="w-4 h-4 text-primary" />
               </div>
               <div>
@@ -476,7 +373,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
             </div>
             <Dropdown
               trigger={
-                <div className="p-1.5 rounded-xl opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-all duration-200">
+                <div className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-opacity">
                   <MoreVertical className="w-4 h-4 text-gray-500" />
                 </div>
               }
@@ -510,199 +407,253 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
   return (
     <div>
       {/* Validation error banner */}
-      <AnimatePresence>
-        {Object.keys(courseErrors).length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="mb-4 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3"
-          >
-            <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-red-800">Please fix the following issues before saving:</p>
-              <ul className="mt-1 list-disc list-inside text-sm text-red-700 space-y-0.5">
-                {Object.entries(courseErrors).map(([key, msg]) => (
-                  <li key={key}>{msg}</li>
-                ))}
-              </ul>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {Object.keys(courseErrors).length > 0 && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-red-800">Please fix the following issues before saving:</p>
+            <ul className="mt-1 list-disc list-inside text-sm text-red-700 space-y-0.5">
+              {Object.entries(courseErrors).map(([key, msg]) => (
+                <li key={key}>{msg}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-3 mb-6"
-      >
+      {/* ─── Header ─── */}
+      <div className="flex items-center gap-3 mb-6">
         <Link
           href="/admin/courses"
-          className="p-2 text-gray-400 hover:text-gray-600 rounded-2xl hover:bg-gray-100 transition-colors"
+          className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900">{title || 'New Course'}</h1>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl font-bold text-gray-900 truncate">{title || 'New Course'}</h1>
         </div>
-        <Button onClick={handleSave} disabled={isPending}>
-          <Sparkles className="w-4 h-4" />
-          {isPending ? 'Saving...' : 'Save Changes'}
-        </Button>
-      </motion.div>
-
-      {/* Action bar */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="flex flex-wrap items-center gap-3 mb-6 p-4 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm"
-      >
         <Toggle
           checked={isPublished}
           onChange={(v) => {
             setIsPublished(v);
-            // Clear websiteUrl error when switching to draft
             if (!v) setCourseErrors(prev => { const { websiteUrl: _, ...rest } = prev; return rest; });
           }}
           label={isPublished ? 'Published' : 'Draft'}
         />
-        <div className="flex-1" />
-        <Link href={`/courses/${course.slug}`}>
-          <Button variant="outline" size="sm">
-            <Eye className="w-4 h-4" />
-            Preview
-          </Button>
-        </Link>
-        <Button variant="outline" size="sm" onClick={() => setAttendeeModalOpen(true)}>
-          <UserPlus className="w-4 h-4" />
-          Add Attendees
+        <Button onClick={handleSave} disabled={isPending}>
+          {isPending ? 'Saving...' : 'Save Changes'}
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setContactModalOpen(true)}>
-          <Mail className="w-4 h-4" />
-          Contact Attendees
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setCoverUploadOpen(true)}>
-          <Upload className="w-4 h-4" />
-          {coverImageUrl ? 'Change Cover' : 'Upload Cover'}
-        </Button>
-      </motion.div>
+      </div>
 
-      {/* Cover image preview */}
-      {coverImageUrl && (
-        <div className="mb-6 relative rounded-2xl overflow-hidden h-48 bg-gray-100 shadow-sm">
-          <img src={coverImageUrl} alt="Course cover" className="w-full h-full object-cover" />
-        </div>
-      )}
-
-      {/* Course fields */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="bg-white rounded-2xl border border-gray-100 p-6 mb-6 shadow-sm"
-      >
-        <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <Input
-              label="Title"
-              value={title}
-              onChange={e => { setTitle(e.target.value); setCourseErrors(prev => { const { title: _, ...rest } = prev; return rest; }); }}
-              placeholder="Course title"
-              required
-            />
-            <FieldError field="title" errors={courseErrors} />
-          </div>
-          <div>
-            <Input
-              label="Website URL"
-              value={websiteUrl}
-              onChange={e => { setWebsiteUrl(e.target.value); setCourseErrors(prev => { const { websiteUrl: _, ...rest } = prev; return rest; }); }}
-              placeholder="https://..."
-              helperText={isPublished && !websiteUrl.trim() ? undefined : (isPublished ? 'Required when published' : undefined)}
-            />
-            {isPublished && !websiteUrl.trim() && !courseErrors.websiteUrl && (
-              <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3 flex-shrink-0" />
-                Required before publishing
-              </p>
-            )}
-            <FieldError field="websiteUrl" errors={courseErrors} />
-          </div>
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">Tags</label>
-            <div className="flex flex-wrap gap-2 p-2 border border-gray-200 rounded-2xl min-h-[42px]">
-              {courseTagsState.map(tag => (
-                <Badge key={tag} className="flex items-center gap-1">
-                  {tag}
+      {/* ─── Two-column: Cover Image + Course Details ─── */}
+      <div className="grid lg:grid-cols-5 gap-6 mb-6">
+        {/* Left: Cover Image */}
+        <div className="lg:col-span-2">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            {coverImageUrl ? (
+              <div className="relative group">
+                <img src={coverImageUrl} alt="Course cover" className="w-full aspect-[16/10] object-cover" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                   <button
-                    onClick={() => setCourseTags(courseTagsState.filter(t => t !== tag))}
-                    className="ml-1 text-gray-400 hover:text-gray-600 cursor-pointer"
+                    onClick={() => setCoverUploadOpen(true)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 px-4 py-2 bg-white/90 rounded-lg text-sm font-medium text-gray-700 shadow-sm cursor-pointer"
                   >
-                    ×
+                    <Camera className="w-4 h-4" />
+                    Change Cover
                   </button>
-                </Badge>
-              ))}
-              <select
-                className="text-sm border-none outline-none bg-transparent flex-1 min-w-[120px]"
-                onChange={e => {
-                  if (e.target.value && !courseTagsState.includes(e.target.value)) {
-                    setCourseTags([...courseTagsState, e.target.value]);
-                  }
-                  e.target.value = '';
-                }}
-                defaultValue=""
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setCoverUploadOpen(true)}
+                className="w-full aspect-[16/10] bg-gray-50 hover:bg-gray-100 transition-colors flex flex-col items-center justify-center gap-3 cursor-pointer border-2 border-dashed border-gray-200 rounded-xl"
               >
-                <option value="">Add tag...</option>
-                {allTags.filter(t => !courseTagsState.includes(t.name)).map(t => (
-                  <option key={t.id} value={t.name}>{t.name}</option>
-                ))}
-              </select>
-            </div>
+                <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
+                  <Upload className="w-6 h-6 text-gray-400" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-600">Upload Cover Image</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Recommended: 1200 × 600</p>
+                </div>
+              </button>
+            )}
           </div>
-          {/* Course Admin selector — only visible to admins */}
-          {isAdmin ? (
-            <Select
-              label="Responsible / Course Admin"
-              value={adminId}
-              onChange={e => setAdminId((e.target as HTMLSelectElement).value)}
-              options={[
-                { value: '', label: 'Select...' },
-                ...instructors.map(u => ({ value: u.id, label: `${u.first_name} ${u.last_name}` })),
-              ]}
-            />
-          ) : (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Course Admin</label>
-              <p className="text-sm text-gray-500 p-2 bg-gray-50 rounded-2xl border border-gray-100">
-                {instructors.find(u => u.id === adminId)
-                  ? `${instructors.find(u => u.id === adminId)!.first_name} ${instructors.find(u => u.id === adminId)!.last_name}`
-                  : 'Not assigned'}
-              </p>
-            </div>
-          )}
-        </div>
-      </motion.div>
 
-      {/* Tabs */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
-        className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm"
-      >
+          {/* Quick actions under cover */}
+          <div className="flex flex-wrap gap-2 mt-3">
+            <Link href={`/courses/${course.slug}`}>
+              <Button variant="outline" size="sm">
+                <Eye className="w-4 h-4" />
+                Preview
+              </Button>
+            </Link>
+            <Button variant="outline" size="sm" onClick={() => setAttendeeModalOpen(true)}>
+              <UserPlus className="w-4 h-4" />
+              Add Attendees
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setContactModalOpen(true)}>
+              <Mail className="w-4 h-4" />
+              Mail Participants
+            </Button>
+          </div>
+        </div>
+
+        {/* Right: Course Details + Inline Options */}
+        <div className="lg:col-span-3">
+          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+            {/* Title */}
+            <div>
+              <Input
+                label="Title"
+                value={title}
+                onChange={e => { setTitle(e.target.value); setCourseErrors(prev => { const { title: _, ...rest } = prev; return rest; }); }}
+                placeholder="Course title"
+                required
+              />
+              <FieldError field="title" errors={courseErrors} />
+            </div>
+
+            {/* Website URL */}
+            <div>
+              <Input
+                label="Website URL"
+                value={websiteUrl}
+                onChange={e => { setWebsiteUrl(e.target.value); setCourseErrors(prev => { const { websiteUrl: _, ...rest } = prev; return rest; }); }}
+                placeholder="https://..."
+              />
+              {isPublished && !websiteUrl.trim() && !courseErrors.websiteUrl && (
+                <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                  Required before publishing
+                </p>
+              )}
+              <FieldError field="websiteUrl" errors={courseErrors} />
+            </div>
+
+            {/* Visibility + Access Rule side by side */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-foreground/80">Visibility</label>
+                <Select value={visibility} onValueChange={(v) => setVisibility(v as CourseVisibility)}>
+                  <SelectTrigger className="w-full h-10 rounded-xl border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="everyone">Everyone</SelectItem>
+                    <SelectItem value="signed_in">Signed In Only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-foreground/80">Access Rule</label>
+                <Select value={accessRule} onValueChange={(v) => setAccessRule(v as CourseAccessRule)}>
+                  <SelectTrigger className="w-full h-10 rounded-xl border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="on_invitation">On Invitation</SelectItem>
+                    <SelectItem value="on_payment">On Payment</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Price (conditional) */}
+            {accessRule === 'on_payment' && (
+              <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <Input
+                  label="Price (USD)"
+                  type="number"
+                  value={price}
+                  onChange={e => { setPrice(e.target.value); setCourseErrors(prev => { const { price: _, ...rest } = prev; return rest; }); }}
+                  placeholder="49.99"
+                />
+                {(!price || parseFloat(price) <= 0) && (
+                  <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                    A price greater than $0 is required for paid courses
+                  </p>
+                )}
+                <FieldError field="price" errors={courseErrors} />
+              </div>
+            )}
+
+            {/* Tags */}
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">Tags</label>
+              <div className="flex flex-wrap gap-2 p-2 border border-gray-300 rounded-lg min-h-[42px]">
+                {courseTagsState.map(tag => (
+                  <Badge key={tag} className="flex items-center gap-1">
+                    {tag}
+                    <button
+                      onClick={() => setCourseTags(courseTagsState.filter(t => t !== tag))}
+                      className="ml-1 text-gray-400 hover:text-gray-600 cursor-pointer"
+                    >
+                      ×
+                    </button>
+                  </Badge>
+                ))}
+                <select
+                  className="text-sm border-none outline-none bg-transparent flex-1 min-w-[120px]"
+                  onChange={e => {
+                    if (e.target.value && !courseTagsState.includes(e.target.value)) {
+                      setCourseTags([...courseTagsState, e.target.value]);
+                    }
+                    e.target.value = '';
+                  }}
+                  defaultValue=""
+                >
+                  <option value="">Add tag...</option>
+                  {allTags.filter(t => !courseTagsState.includes(t.name)).map(t => (
+                    <option key={t.id} value={t.name}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Course Admin */}
+            {isAdmin ? (
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-foreground/80">Course Admin</label>
+                <Select value={adminId || '_none'} onValueChange={(v) => setAdminId(v === '_none' ? '' : v)}>
+                  <SelectTrigger className="w-full h-10 rounded-xl border-border">
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">Select...</SelectItem>
+                    {instructors.map(u => (
+                      <SelectItem key={u.id} value={u.id}>{u.first_name} {u.last_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Course Admin</label>
+                <p className="text-sm text-gray-500 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                  {instructors.find(u => u.id === adminId)
+                    ? `${instructors.find(u => u.id === adminId)!.first_name} ${instructors.find(u => u.id === adminId)!.last_name}`
+                    : 'Not assigned'}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Tabs: Content | Description | Quiz ─── */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
         <Tabs
           tabs={[
             { id: 'content', label: 'Content', content: ContentTab },
             { id: 'description', label: 'Description', content: DescriptionTab },
-            { id: 'options', label: 'Options', content: OptionsTab },
             { id: 'quiz', label: 'Quiz', content: QuizTab },
           ]}
         />
-      </motion.div>
+      </div>
 
-      {/* Lesson Editor Modal */}
+      {/* ─── Lesson Editor Modal ─── */}
       <Modal
         isOpen={lessonModalOpen}
         onClose={() => setLessonModalOpen(false)}
@@ -710,6 +661,49 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
         size="lg"
       >
         <div className="p-6">
+          {/* Lesson validation errors banner */}
+          {Object.keys(lessonErrors).length > 0 && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-semibold text-red-800">Please fix the following:</p>
+                <ul className="mt-0.5 list-disc list-inside text-xs text-red-700 space-y-0.5">
+                  {Object.entries(lessonErrors).map(([key, msg]) => (
+                    <li key={key}>{msg}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Title + Responsible — always visible above tabs */}
+          <div className="space-y-4 mb-5">
+            <div>
+              <Input
+                label="Lesson Title"
+                value={lessonForm.title}
+                onChange={e => { setLessonForm({ ...lessonForm, title: e.target.value }); setLessonErrors(prev => { const { lessonTitle: _, ...rest } = prev; return rest; }); }}
+                placeholder="Enter lesson title"
+                required
+              />
+              <FieldError field="lessonTitle" errors={lessonErrors} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-foreground/80">Responsible (optional)</label>
+              <Select value={lessonForm.responsible || '_none'} onValueChange={(v) => setLessonForm({ ...lessonForm, responsible: v === '_none' ? '' : v })}>
+                <SelectTrigger className="w-full h-10 rounded-xl border-border">
+                  <SelectValue placeholder="Select..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">Select...</SelectItem>
+                  {instructors.map(u => (
+                    <SelectItem key={u.id} value={u.id}>{u.first_name} {u.last_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <Tabs
             tabs={[
               {
@@ -717,30 +711,6 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                 label: 'Content',
                 content: (
                   <div className="space-y-4 pt-2">
-                    {/* Lesson validation errors banner */}
-                    {Object.keys(lessonErrors).length > 0 && (
-                      <div className="p-3 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-2">
-                        <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-xs font-semibold text-red-800">Please fix the following:</p>
-                          <ul className="mt-0.5 list-disc list-inside text-xs text-red-700 space-y-0.5">
-                            {Object.entries(lessonErrors).map(([key, msg]) => (
-                              <li key={key}>{msg}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    )}
-                    <div>
-                      <Input
-                        label="Lesson Title"
-                        value={lessonForm.title}
-                        onChange={e => { setLessonForm({ ...lessonForm, title: e.target.value }); setLessonErrors(prev => { const { lessonTitle: _, ...rest } = prev; return rest; }); }}
-                        placeholder="Enter lesson title"
-                        required
-                      />
-                      <FieldError field="lessonTitle" errors={lessonErrors} />
-                    </div>
                     <div className="space-y-1">
                       <label className="block text-sm font-medium text-gray-700">Lesson Type</label>
                       <div className="grid grid-cols-3 gap-2">
@@ -750,10 +720,10 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                             <button
                               key={type}
                               onClick={() => setLessonForm({ ...lessonForm, type })}
-                              className={`flex items-center gap-2 p-3 rounded-2xl border text-sm font-medium transition-all duration-200 cursor-pointer ${
+                              className={`flex items-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors cursor-pointer ${
                                 lessonForm.type === type
-                                  ? 'border-primary/50 bg-primary-50 text-primary shadow-sm'
-                                  : 'border-gray-100 text-gray-600 hover:border-gray-300'
+                                  ? 'border-primary bg-primary-50 text-primary'
+                                  : 'border-gray-200 text-gray-600 hover:border-gray-300'
                               }`}
                             >
                               <Icon className="w-4 h-4" />
@@ -763,120 +733,109 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                         })}
                       </div>
                     </div>
-                    <Select
-                      label="Responsible (optional)"
-                      value={lessonForm.responsible}
-                      onChange={e => setLessonForm({ ...lessonForm, responsible: (e.target as HTMLSelectElement).value })}
-                      options={[
-                        { value: '', label: 'Select...' },
-                        ...instructors.map(u => ({ value: u.id, label: `${u.first_name} ${u.last_name}` })),
-                      ]}
-                    />
 
                     {/* === VIDEO LESSON === */}
                     {lessonForm.type === 'video' && (
-                      <div className="space-y-4 p-4 bg-blue-50/70 rounded-2xl border border-blue-100">
-                        <FileUpload
-                          label="Upload Video"
-                          accept="video/*"
-                          maxSize={500 * 1024 * 1024} // 500 MB
-                          folder="courses/videos"
-                          hint="MP4, WebM, MOV up to 500 MB"
-                          currentUrl={lessonForm.videoUrl.startsWith('http') && !lessonForm.videoUrl.includes('youtube') && !lessonForm.videoUrl.includes('vimeo') ? lessonForm.videoUrl : ''}
-                          currentFilename={lessonForm.videoUrl ? 'Video file' : ''}
-                          onUpload={(result) => {
-                            setLessonForm(prev => ({ ...prev, videoUrl: result.url }));
-                            setLessonErrors(prev => { const { videoUrl: _, ...rest } = prev; return rest; });
-                          }}
-                          onDurationDetected={(minutes) => {
-                            setLessonForm(prev => ({ ...prev, videoDuration: minutes.toString() }));
-                            setLessonErrors(prev => { const { videoDuration: _, ...rest } = prev; return rest; });
-                          }}
-                        />
-                        <FieldError field="videoUrl" errors={lessonErrors} />
-                        <div className="flex items-center gap-3 text-xs text-gray-500">
-                          <div className="flex-1 h-px bg-gray-300" />
-                          <span>or paste an external URL</span>
-                          <div className="flex-1 h-px bg-gray-300" />
-                        </div>
-                        <Input
-                          label="Video URL (YouTube / Vimeo / Direct)"
-                          value={lessonForm.videoUrl}
-                          onChange={e => { setLessonForm({ ...lessonForm, videoUrl: e.target.value }); setLessonErrors(prev => { const { videoUrl: _, ...rest } = prev; return rest; }); }}
-                          placeholder="https://youtube.com/watch?v=... or direct URL"
-                        />
-
-                        {/* Video URL Preview */}
-                        {lessonForm.videoUrl && (() => {
+                      <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        {(() => {
                           const url = lessonForm.videoUrl;
-                          const ytMatch = url.match(
-                            /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/
-                          );
-                          const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
-                          if (ytMatch) {
-                            return (
-                              <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
-                                <iframe
-                                  src={`https://www.youtube.com/embed/${ytMatch[1]}`}
-                                  className="w-full aspect-video"
-                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                  allowFullScreen
-                                  title="Video preview"
-                                />
-                              </div>
-                            );
-                          }
-                          if (vimeoMatch) {
-                            return (
-                              <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
-                                <iframe
-                                  src={`https://player.vimeo.com/video/${vimeoMatch[1]}`}
-                                  className="w-full aspect-video"
-                                  allow="autoplay; fullscreen; picture-in-picture"
-                                  allowFullScreen
-                                  title="Video preview"
-                                />
-                              </div>
-                            );
-                          }
-                          // Direct video URL — show native player (only if not already shown by FileUpload)
-                          if (url.startsWith('http') && !url.includes('youtube') && !url.includes('vimeo')) {
-                            return (
-                              <div className="rounded-2xl overflow-hidden bg-black border border-gray-100 shadow-sm">
-                                <video
-                                  src={url}
-                                  controls
-                                  preload="metadata"
-                                  className="w-full max-h-[240px]"
-                                  playsInline
-                                />
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
+                          const isYouTube = url && /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)/.test(url);
+                          const isVimeo = url && /vimeo\.com\/\d+/.test(url);
+                          const isDirectUpload = url && url.startsWith('http') && !isYouTube && !isVimeo;
 
-                        <div>
-                          <Input
-                            label="Duration (minutes)"
-                            type="number"
-                            value={lessonForm.videoDuration}
-                            onChange={e => { setLessonForm({ ...lessonForm, videoDuration: e.target.value }); setLessonErrors(prev => { const { videoDuration: _, ...rest } = prev; return rest; }); }}
-                            placeholder="Auto-detected on upload, or enter manually"
-                            helperText={lessonForm.videoDuration ? `${lessonForm.videoDuration} min` : 'Will be auto-detected when uploading a video file'}
-                          />
-                          <FieldError field="videoDuration" errors={lessonErrors} />
-                        </div>
+                          return (
+                            <>
+                              <FileUpload
+                                label="Upload Video"
+                                accept="video/*"
+                                maxSize={500 * 1024 * 1024}
+                                folder="courses/videos"
+                                hint="MP4, WebM, MOV up to 500 MB"
+                                currentUrl={isDirectUpload ? url : ''}
+                                currentFilename={isDirectUpload ? 'Video file' : ''}
+                                onUpload={(result) => {
+                                  setLessonForm(prev => ({ ...prev, videoUrl: result.url }));
+                                  setLessonErrors(prev => { const { videoUrl: _, ...rest } = prev; return rest; });
+                                }}
+                                onDurationDetected={(minutes) => {
+                                  setLessonForm(prev => ({ ...prev, videoDuration: minutes.toString() }));
+                                  setLessonErrors(prev => { const { videoDuration: _, ...rest } = prev; return rest; });
+                                }}
+                              />
+                              <FieldError field="videoUrl" errors={lessonErrors} />
+
+                              {/* Show video preview when we have a direct upload URL */}
+                              {isDirectUpload && (
+                                <div className="rounded-lg overflow-hidden bg-black border border-gray-200">
+                                  <video
+                                    src={url}
+                                    controls
+                                    preload="metadata"
+                                    className="w-full max-h-[240px]"
+                                    playsInline
+                                  />
+                                </div>
+                              )}
+
+                              {/* External URL input — only show when there is NO direct upload */}
+                              {!isDirectUpload && (
+                                <>
+                                  {/* YouTube / Vimeo preview */}
+                                  {isYouTube && (() => {
+                                    const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+                                    return ytMatch ? (
+                                      <div className="rounded-lg overflow-hidden border border-gray-200">
+                                        <iframe
+                                          src={`https://www.youtube.com/embed/${ytMatch[1]}`}
+                                          className="w-full aspect-video"
+                                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                          allowFullScreen
+                                          title="Video preview"
+                                        />
+                                      </div>
+                                    ) : null;
+                                  })()}
+                                  {isVimeo && (() => {
+                                    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+                                    return vimeoMatch ? (
+                                      <div className="rounded-lg overflow-hidden border border-gray-200">
+                                        <iframe
+                                          src={`https://player.vimeo.com/video/${vimeoMatch[1]}`}
+                                          className="w-full aspect-video"
+                                          allow="autoplay; fullscreen; picture-in-picture"
+                                          allowFullScreen
+                                          title="Video preview"
+                                        />
+                                      </div>
+                                    ) : null;
+                                  })()}
+                                </>
+                              )}
+
+                              <div>
+                                <Input
+                                  label="Duration (minutes)"
+                                  type="number"
+                                  value={lessonForm.videoDuration}
+                                  onChange={e => { setLessonForm({ ...lessonForm, videoDuration: e.target.value }); setLessonErrors(prev => { const { videoDuration: _, ...rest } = prev; return rest; }); }}
+                                  placeholder="Auto-detected on upload, or enter manually"
+                                  helperText={lessonForm.videoDuration ? `${lessonForm.videoDuration} min` : 'Will be auto-detected when uploading a video file'}
+                                />
+                                <FieldError field="videoDuration" errors={lessonErrors} />
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
                     )}
 
                     {/* === DOCUMENT LESSON === */}
                     {lessonForm.type === 'document' && (
-                      <div className="space-y-4 p-4 bg-emerald-50/70 rounded-2xl border border-emerald-100">
+                      <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                         <FileUpload
                           label="Upload Document"
                           accept=".pdf,.doc,.docx,.pptx,.ppt,.xls,.xlsx,.txt"
-                          maxSize={100 * 1024 * 1024} // 100 MB
+                          maxSize={100 * 1024 * 1024}
                           folder="courses/documents"
                           hint="PDF, DOCX, PPTX up to 100 MB"
                           currentUrl={lessonForm.documentUrl}
@@ -902,11 +861,11 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
 
                     {/* === IMAGE LESSON === */}
                     {lessonForm.type === 'image' && (
-                      <div className="space-y-4 p-4 bg-amber-50/70 rounded-2xl border border-amber-100">
+                      <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                         <FileUpload
                           label="Upload Image"
                           accept="image/*"
-                          maxSize={10 * 1024 * 1024} // 10 MB
+                          maxSize={10 * 1024 * 1024}
                           folder="courses/images"
                           hint="PNG, JPG, GIF, WebP up to 10 MB"
                           currentUrl={lessonForm.imageUrl}
@@ -953,7 +912,7 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
                   <div className="pt-2 space-y-4">
                     <p className="text-sm text-gray-500">Add extra resources for learners (files or links).</p>
                     {lessonForm.attachments.map((att, idx) => (
-                      <div key={idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded-2xl">
+                      <div key={idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                         {att.type === 'file' ? <Upload className="w-4 h-4 text-gray-400" /> : <LinkIcon className="w-4 h-4 text-gray-400" />}
                         <span className="text-sm flex-1">{att.title || att.url}</span>
                         <button
@@ -1076,19 +1035,8 @@ export default function CourseFormClient({ course, lessons: initialLessons, quiz
           />
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setContactModalOpen(false)}>Cancel</Button>
-            <Button
-              disabled={isPending || !contactSubject.trim() || !contactMessage.trim()}
-              onClick={() => {
-                startTransition(async () => {
-                  const result = await contactAttendees(course.id, contactSubject, contactMessage);
-                  setContactModalOpen(false);
-                  setContactSubject('');
-                  setContactMessage('');
-                  alert(`Email sent to ${result.sent} of ${result.total} attendees.`);
-                });
-              }}
-            >
-              {isPending ? 'Sending...' : 'Send Message'}
+            <Button onClick={() => { setContactModalOpen(false); }}>
+              Send Message
             </Button>
           </div>
         </div>

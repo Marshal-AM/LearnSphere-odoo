@@ -71,10 +71,11 @@ export default function CoursesDashboardClient({
   const CourseCard = ({ course }: { course: Course }) => (
     <motion.div
       whileHover={{ y: -3 }}
-      className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group"
+      className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group cursor-pointer"
+      onClick={() => router.push(`/admin/courses/${course.id}`)}
     >
       {/* Cover image */}
-      <div className="relative h-36 bg-gradient-to-br from-primary/15 to-indigo-100">
+      <div className="relative h-36 bg-primary/10">
         {course.cover_image_url && (
           <img
             src={course.cover_image_url}
@@ -83,7 +84,7 @@ export default function CoursesDashboardClient({
           />
         )}
         {/* Actions */}
-        <div className="absolute top-2 right-2">
+        <div className="absolute top-2 right-2" onClick={e => e.stopPropagation()}>
           <Dropdown
             trigger={
               <div className="p-1.5 bg-white/90 backdrop-blur-sm rounded-xl hover:bg-white shadow-sm border border-gray-100/50 transition-all">
@@ -108,12 +109,9 @@ export default function CoursesDashboardClient({
       </div>
       {/* Content */}
       <div className="p-4">
-        <Link
-          href={`/admin/courses/${course.id}`}
-          className="text-sm font-semibold text-gray-900 hover:text-primary transition-colors duration-200 line-clamp-2"
-        >
+        <p className="text-sm font-semibold text-gray-900 group-hover:text-primary transition-colors duration-200 line-clamp-2">
           {course.title}
-        </Link>
+        </p>
         {/* Tags */}
         {course.tags && course.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2">

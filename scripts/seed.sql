@@ -9,13 +9,14 @@ SET session_replication_role = 'replica';
 -- =====================================================
 -- USERS
 -- =====================================================
+-- Admin password: Admin123!
 INSERT INTO users (id, email, password_hash, first_name, last_name, avatar_url, roles, total_points, current_badge, is_active, email_verified, email_verified_at, created_at, updated_at) VALUES
-('00000000-0000-0000-0000-000000000001', 'admin@learnsphere.com', NULL, 'Admin', 'User', '', ARRAY['admin','instructor']::user_role[], 0, 'newbie', true, true, '2025-01-01', '2025-01-01', '2025-01-01'),
-('00000000-0000-0000-0000-000000000002', 'jane.instructor@learnsphere.com', NULL, 'Jane', 'Smith', '', ARRAY['instructor']::user_role[], 0, 'newbie', true, true, '2025-01-05', '2025-01-05', '2025-01-05'),
-('00000000-0000-0000-0000-000000000003', 'alice@learner.com', NULL, 'Alice', 'Johnson', '', ARRAY['learner']::user_role[], 75, 'achiever', true, true, '2025-02-01', '2025-02-01', '2025-06-15'),
-('00000000-0000-0000-0000-000000000004', 'bob@learner.com', NULL, 'Bob', 'Williams', '', ARRAY['learner']::user_role[], 45, 'explorer', true, true, '2025-02-10', '2025-02-10', '2025-06-10'),
-('00000000-0000-0000-0000-000000000005', 'charlie@learner.com', NULL, 'Charlie', 'Brown', '', ARRAY['learner']::user_role[], 110, 'expert', true, true, '2025-01-20', '2025-01-20', '2025-06-20'),
-('00000000-0000-0000-0000-000000000006', 'diana@learner.com', NULL, 'Diana', 'Prince', '', ARRAY['learner']::user_role[], 20, 'newbie', true, true, '2025-03-01', '2025-03-01', '2025-05-15');
+('00000000-0000-0000-0000-000000000001', 'admin@learnsphere.com', '$2b$12$UwqXH8OuV4GgcFR.zF2LNu3uR7Q3z5/Tmyla3lvvSR7HwaMmUgcF.', 'Admin', 'User', '', ARRAY['admin','instructor']::user_role[], 0, 'newbie', true, true, '2025-01-01', '2025-01-01', '2025-01-01'),
+('00000000-0000-0000-0000-000000000002', 'jane.instructor@learnsphere.com', '$2b$12$UwqXH8OuV4GgcFR.zF2LNu3uR7Q3z5/Tmyla3lvvSR7HwaMmUgcF.', 'Jane', 'Smith', '', ARRAY['instructor']::user_role[], 0, 'newbie', true, true, '2025-01-05', '2025-01-05', '2025-01-05'),
+('00000000-0000-0000-0000-000000000003', 'alice@learner.com', '$2b$12$UwqXH8OuV4GgcFR.zF2LNu3uR7Q3z5/Tmyla3lvvSR7HwaMmUgcF.', 'Alice', 'Johnson', '', ARRAY['learner']::user_role[], 75, 'achiever', true, true, '2025-02-01', '2025-02-01', '2025-06-15'),
+('00000000-0000-0000-0000-000000000004', 'bob@learner.com', '$2b$12$UwqXH8OuV4GgcFR.zF2LNu3uR7Q3z5/Tmyla3lvvSR7HwaMmUgcF.', 'Bob', 'Williams', '', ARRAY['learner']::user_role[], 45, 'explorer', true, true, '2025-02-10', '2025-02-10', '2025-06-10'),
+('00000000-0000-0000-0000-000000000005', 'charlie@learner.com', '$2b$12$UwqXH8OuV4GgcFR.zF2LNu3uR7Q3z5/Tmyla3lvvSR7HwaMmUgcF.', 'Charlie', 'Brown', '', ARRAY['learner']::user_role[], 110, 'expert', true, true, '2025-01-20', '2025-01-20', '2025-06-20'),
+('00000000-0000-0000-0000-000000000006', 'diana@learner.com', '$2b$12$UwqXH8OuV4GgcFR.zF2LNu3uR7Q3z5/Tmyla3lvvSR7HwaMmUgcF.', 'Diana', 'Prince', '', ARRAY['learner']::user_role[], 20, 'newbie', true, true, '2025-03-01', '2025-03-01', '2025-05-15');
 
 -- =====================================================
 -- TAGS

@@ -6,7 +6,7 @@ import { ReactNode, useState, useEffect, useCallback } from 'react';
 import {
   GraduationCap, BookOpen, BarChart3, LogOut, Bell,
   User as UserIcon, Settings, ChevronsUpDown, Globe,
-  Sparkles, Video,
+  Video,
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils';
@@ -99,7 +99,7 @@ export default function AdminLayoutClient({ children, user }: { children: ReactN
 
   const navigation = [
     { name: 'Courses', href: '/admin/courses', icon: BookOpen },
-    { name: 'Reporting', href: '/admin/reporting', icon: BarChart3 },
+    { name: 'Student Details', href: '/admin/reporting', icon: BarChart3 },
     ...(isInstructor
       ? [{ name: 'Meetings', href: '/admin/meetings', icon: Video }]
       : []),
@@ -112,7 +112,7 @@ export default function AdminLayoutClient({ children, user }: { children: ReactN
         <SidebarHeader className="px-4 py-5">
           <Link href="/admin/courses" className="flex items-center gap-3 group">
             <div className="relative">
-              <div className="w-9 h-9 bg-gradient-to-br from-violet-500 via-primary to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary/30 group-hover:shadow-xl group-hover:shadow-primary/40 transition-all duration-300 group-hover:scale-105">
+              <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/30 group-hover:shadow-xl group-hover:shadow-primary/40 transition-all duration-300 group-hover:scale-105">
                 <GraduationCap className="w-5 h-5 text-white" />
               </div>
               <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-sidebar-bg" />
@@ -145,14 +145,14 @@ export default function AdminLayoutClient({ children, user }: { children: ReactN
                         size="lg"
                         className={cn(
                           'rounded-xl transition-all duration-200',
-                          isActive && 'bg-gradient-to-r from-primary/20 to-indigo-600/10 text-white font-semibold shadow-sm'
+                          isActive && 'bg-primary/15 text-white font-semibold shadow-sm'
                         )}
                       >
                         <Link href={item.href}>
                           <div className={cn(
                             'relative flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200',
                             isActive
-                              ? 'bg-gradient-to-br from-primary to-indigo-600 text-white shadow-md shadow-primary/30'
+                              ? 'bg-primary text-white shadow-md shadow-primary/30'
                               : 'text-sidebar-foreground/60'
                           )}>
                             <item.icon className="w-[18px] h-[18px]" />
@@ -164,9 +164,6 @@ export default function AdminLayoutClient({ children, user }: { children: ReactN
                             )}
                           </div>
                           <span>{item.name}</span>
-                          {isActive && (
-                            <Sparkles className="ml-auto w-3.5 h-3.5 text-primary-light/60" />
-                          )}
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -265,7 +262,7 @@ export default function AdminLayoutClient({ children, user }: { children: ReactN
       {/* ─── Main Content Area ─── */}
       <SidebarInset>
         {/* Top bar */}
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/50 bg-background/80 backdrop-blur-xl px-4 lg:px-6">
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border/50 bg-background px-4 lg:px-6">
           <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground" />
           <Separator orientation="vertical" className="mx-1 h-4" />
 
@@ -308,43 +305,10 @@ export default function AdminLayoutClient({ children, user }: { children: ReactN
             </button>
           )}
 
-          {/* Top-bar user dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-accent transition-colors cursor-pointer">
-                <Avatar firstName={user.first_name} lastName={user.last_name} src={user.avatar_url} size="sm" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-lg">
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-semibold">{user.first_name} {user.last_name}</p>
-                  <p className="text-xs text-muted-foreground">{user.email}</p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => window.location.href = '/profile'} className="rounded-lg cursor-pointer">
-                <UserIcon className="mr-2 size-4" />
-                Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.location.href = '/courses'} className="rounded-lg cursor-pointer">
-                <Globe className="mr-2 size-4" />
-                View Website
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => signOut({ callbackUrl: '/login' })}
-                className="rounded-lg cursor-pointer text-destructive focus:text-destructive"
-              >
-                <LogOut className="mr-2 size-4" />
-                Sign out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </header>
 
         {/* Page content */}
-        <div className="flex-1 p-4 lg:p-6">
+        <div className="flex-1 min-h-0 p-4 lg:p-6 flex flex-col overflow-y-auto">
           {children}
         </div>
       </SidebarInset>

@@ -6,7 +6,10 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Plus, Trash2, Check, Trophy, GripVertical, Save, Sparkles, Bot, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input, Textarea, Select } from '@/components/ui/input';
+import { Input, Textarea } from '@/components/ui/input';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { Modal } from '@/components/ui/modal';
 import { cn } from '@/lib/utils';
 import { createQuiz, saveQuizQuestions } from '@/lib/actions';
@@ -287,7 +290,7 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
                   className={cn(
                     'w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-left transition-all duration-200 cursor-pointer',
                     selectedQuestion === idx
-                      ? 'bg-gradient-to-r from-primary-50 to-indigo-50 text-primary font-medium shadow-sm'
+                      ? 'bg-primary-50 text-primary font-medium shadow-sm'
                       : 'text-gray-600 hover:bg-gray-50'
                   )}
                 >
@@ -420,8 +423,8 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
       {/* AI Generate Modal */}
       <Modal isOpen={aiModalOpen} onClose={() => { setAiModalOpen(false); setAiError(''); }} title="Generate Quiz with AI" size="sm">
         <div className="p-6 space-y-5">
-          <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-violet-50 to-indigo-50 rounded-2xl border border-violet-100">
-            <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-violet-500/20">
+          <div className="flex items-center gap-3 p-4 bg-primary-50 rounded-2xl border border-violet-100">
+            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-md shadow-violet-500/20">
               <Bot className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -438,16 +441,19 @@ export default function QuizBuilderClient({ courseId, quiz, questions: existingQ
             placeholder="5"
           />
 
-          <Select
-            label="Difficulty Level"
-            value={aiDifficulty}
-            onChange={e => setAiDifficulty(e.target.value)}
-            options={[
-              { value: 'easy', label: 'Easy' },
-              { value: 'medium', label: 'Medium' },
-              { value: 'hard', label: 'Hard' },
-            ]}
-          />
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-foreground/80">Difficulty Level</label>
+            <Select value={aiDifficulty} onValueChange={setAiDifficulty}>
+              <SelectTrigger className="w-full h-10 rounded-xl border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="easy">Easy</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="hard">Hard</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {aiError && (
             <div className="p-3 bg-red-50 border border-red-100 rounded-xl">

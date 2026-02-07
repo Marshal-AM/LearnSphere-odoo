@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Users, Clock, CheckCircle2, PlayCircle, Settings2, X } from 'lucide-react';
+import { Settings2, X } from 'lucide-react';
 import { SearchInput } from '@/components/ui/search-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ui/progress-bar';
-import { formatDate, formatDuration, getStatusColor, getStatusLabel } from '@/lib/utils';
+import { cn, formatDate, formatDuration, getStatusColor, getStatusLabel } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import type { LearnerCourseStatus, ReportingDashboardRow } from '@/lib/types';
 
@@ -60,21 +60,21 @@ export default function ReportingClient({ data }: { data: ReportingDashboardRow[
   const visibleColumns = columns.filter(c => c.visible);
 
   const stats = [
-    { label: 'Total Participants', value: totalParticipants, icon: Users, gradient: 'from-blue-500 to-indigo-500', bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-700', filter: 'all' as const },
-    { label: 'Yet to Start', value: yetToStart, icon: Clock, gradient: 'from-gray-400 to-gray-500', bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', filter: 'yet_to_start' as LearnerCourseStatus },
-    { label: 'In Progress', value: inProgress, icon: PlayCircle, gradient: 'from-amber-400 to-orange-500', bg: 'bg-amber-50', border: 'border-amber-100', text: 'text-amber-700', filter: 'in_progress' as LearnerCourseStatus },
-    { label: 'Completed', value: completed, icon: CheckCircle2, gradient: 'from-emerald-400 to-teal-500', bg: 'bg-emerald-50', border: 'border-emerald-100', text: 'text-emerald-700', filter: 'completed' as LearnerCourseStatus },
+    { label: 'Total Participants', value: totalParticipants, border: 'border-blue-100', accent: 'text-blue-600', filter: 'all' as const },
+    { label: 'Yet to Start', value: yetToStart, border: 'border-gray-200', accent: 'text-gray-500', filter: 'yet_to_start' as LearnerCourseStatus },
+    { label: 'In Progress', value: inProgress, border: 'border-amber-100', accent: 'text-amber-600', filter: 'in_progress' as LearnerCourseStatus },
+    { label: 'Completed', value: completed, border: 'border-emerald-100', accent: 'text-emerald-600', filter: 'completed' as LearnerCourseStatus },
   ];
 
   return (
-    <div>
+    <div className="flex flex-col flex-1 min-h-0">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between mb-6"
+        className="flex items-center justify-between mb-4 shrink-0"
       >
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reporting</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Student Details</h1>
           <p className="text-sm text-gray-400 mt-1">Course-wise learner progress overview</p>
         </div>
       </motion.div>
@@ -84,7 +84,7 @@ export default function ReportingClient({ data }: { data: ReportingDashboardRow[
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
+        className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 shrink-0"
       >
         {stats.map(stat => (
           <motion.button
@@ -96,19 +96,14 @@ export default function ReportingClient({ data }: { data: ReportingDashboardRow[
               statusFilter === stat.filter ? 'border-primary ring-2 ring-primary/10 shadow-md' : `${stat.border} hover:shadow-md`
             }`}
           >
-            <div className="flex items-center justify-between">
-              <div className={`p-2.5 rounded-xl bg-gradient-to-br ${stat.gradient} shadow-sm`}>
-                <stat.icon className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-3xl font-bold text-gray-900">{stat.value}</span>
-            </div>
-            <p className="mt-3 text-sm text-gray-500 font-medium">{stat.label}</p>
+            <p className="text-sm text-gray-500 font-medium">{stat.label}</p>
+            <p className={`text-3xl font-bold mt-1 ${stat.accent}`}>{stat.value}</p>
           </motion.button>
         ))}
       </motion.div>
 
       {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-3 shrink-0">
         <SearchInput value={search} onChange={setSearch} placeholder="Search by course or participant..." className="w-full sm:w-80" />
         <div className="flex-1" />
         {statusFilter !== 'all' && (
@@ -121,14 +116,29 @@ export default function ReportingClient({ data }: { data: ReportingDashboardRow[
         </Button>
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex gap-4 flex-1 min-h-0">
         {/* Table */}
-        <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
-          <table className="w-full">
+        <div className="flex-1 min-w-0 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <table className="w-full table-fixed">
+            <colgroup>
+              {visibleColumns.map(col => (
+                <col
+                  key={col.key}
+                  className={cn(
+                    col.key === 'sr' && 'w-14',
+                    col.key === 'course_name' && 'w-[18%]',
+                    col.key === 'participant_name' && 'w-[18%]',
+                    col.key === 'completion' && 'w-28',
+                    col.key === 'status' && 'w-24',
+                    col.key === 'time_spent' && 'w-20',
+                  )}
+                />
+              ))}
+            </colgroup>
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/50">
+              <tr className="border-b border-gray-100 bg-gray-50">
                 {visibleColumns.map(col => (
-                  <th key={col.key} className="px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider text-left whitespace-nowrap">{col.label}</th>
+                  <th key={col.key} className="px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-left whitespace-nowrap truncate sticky top-0 bg-gray-50 z-10">{col.label}</th>
                 ))}
               </tr>
             </thead>
@@ -136,19 +146,25 @@ export default function ReportingClient({ data }: { data: ReportingDashboardRow[
               {filteredData.map((row, idx) => (
                 <tr key={row.enrollment_id} className="hover:bg-gray-50/50 transition-colors">
                   {visibleColumns.map(col => (
-                    <td key={col.key} className="px-5 py-3.5 text-sm whitespace-nowrap">
+                    <td
+                      key={col.key}
+                      className={cn(
+                        'px-3 py-3 text-sm',
+                        (col.key === 'course_name' || col.key === 'participant_name') ? 'break-words' : 'whitespace-nowrap truncate',
+                      )}
+                    >
                       {col.key === 'sr' && <span className="text-gray-400 font-medium">{idx + 1}</span>}
-                      {col.key === 'course_name' && <span className="font-medium text-gray-900">{row.course_name}</span>}
+                      {col.key === 'course_name' && <span className="font-medium text-gray-900 line-clamp-2">{row.course_name}</span>}
                       {col.key === 'participant_name' && (
-                        <div>
-                          <p className="font-medium text-gray-900">{row.participant_name}</p>
-                          <p className="text-xs text-gray-400">{row.participant_email}</p>
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 truncate">{row.participant_name}</p>
+                          <p className="text-xs text-gray-400 truncate">{row.participant_email}</p>
                         </div>
                       )}
                       {col.key === 'enrolled_at' && <span className="text-gray-500">{formatDate(row.enrolled_at)}</span>}
                       {col.key === 'started_at' && <span className="text-gray-500">{row.started_at ? formatDate(row.started_at) : '—'}</span>}
                       {col.key === 'time_spent' && <span className="text-gray-500">{formatDuration(row.total_time_spent_minutes)}</span>}
-                      {col.key === 'completion' && <div className="w-32"><ProgressBar value={row.completion_percentage} showLabel size="sm" /></div>}
+                      {col.key === 'completion' && <div className="w-full"><ProgressBar value={row.completion_percentage} showLabel size="sm" /></div>}
                       {col.key === 'completed_at' && <span className="text-gray-500">{row.completed_at ? formatDate(row.completed_at) : '—'}</span>}
                       {col.key === 'status' && <Badge className={getStatusColor(row.status)}>{getStatusLabel(row.status)}</Badge>}
                     </td>
@@ -167,7 +183,7 @@ export default function ReportingClient({ data }: { data: ReportingDashboardRow[
           <motion.div
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
-            className="w-56 bg-white rounded-2xl border border-gray-100 p-5 h-fit sticky top-24 shadow-sm"
+            className="w-56 shrink-0 bg-white rounded-2xl border border-gray-100 p-5 h-fit shadow-sm"
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-gray-900">Show/Hide Columns</h3>

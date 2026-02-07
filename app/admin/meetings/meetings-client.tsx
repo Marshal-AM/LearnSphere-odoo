@@ -184,10 +184,10 @@ export default function MeetingsClient({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
-        className="mt-8 p-5 bg-gradient-to-r from-violet-50 to-indigo-50 rounded-2xl border border-violet-100"
+        className="mt-8 p-5 bg-primary-50 rounded-2xl border border-violet-100"
       >
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-violet-500/20 flex-shrink-0">
+          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-md shadow-violet-500/20 flex-shrink-0">
             <Video className="w-5 h-5 text-white" />
           </div>
           <div>
