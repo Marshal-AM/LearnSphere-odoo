@@ -1,6 +1,6 @@
 # LearnSphere
 
-A comprehensive, modern learning management system (LMS) built with Next.js 14+ and PostgreSQL, featuring real-time video sessions, AI-powered content generation, and a complete course management ecosystem.
+A comprehensive, modern e-learning platform built with Next.js 14+ and PostgreSQL, featuring real-time video sessions, AI-powered content generation, and a complete course management ecosystem.
 
 ### Deployed live demo:
 
@@ -13,6 +13,8 @@ you can log in here as super admin with:
 and use your **Google Account** to login as an instructor or view course contents (publicly browsable).
 
 ## Introduction
+
+<img width="1872" height="813" alt="image" src="https://github.com/user-attachments/assets/b2049b20-77db-428e-9928-a8d40658177f" />
 
 LearnSphere is a full-stack educational platform designed to bridge the gap between instructors and learners through innovative technology. The platform combines traditional course management with cutting-edge features like daily one-on-one video sessions, AI-powered quiz generation, and multimodal content analysis to create an engaging, personalized learning experience.
 
@@ -72,7 +74,9 @@ LearnSphere uses a well-normalized PostgreSQL schema designed for scalability, d
 
 ## Open Innovations We Are Proud of
 
-### Daily-SDK Based One-on-One Video Mentoring Sessions
+### Daily-SDK Powered One-on-One Video Mentoring Sessions
+
+<img width="1918" height="980" alt="image" src="https://github.com/user-attachments/assets/d66892d4-335e-4eda-acc7-62c7492d1b88" />
 
 LearnSphere integrates [Daily.co](https://www.daily.co/) to enable real-time, one-on-one video sessions between instructors and learners. This feature provides a seamless, in-app video conferencing experience **without requiring external tools**, enabling personalized mentorship and real-time Q&A sessions.
 
@@ -195,6 +199,8 @@ The AI agent is a FastAPI application that serves as a bridge between LearnSpher
 
 #### 1. Multimodal Course Content Analysis for Learner Queries
 
+<img width="1467" height="917" alt="Screenshot 2026-02-08 at 8 16 35 AM" src="https://github.com/user-attachments/assets/7037636b-3976-4136-81b4-be4b599ed0a8" />
+
 The AI service can analyze all course materials (documents, images, videos) to answer learner questions contextually. This enables learners to get instant, accurate answers without waiting for instructor responses.
 
 **Backend Implementation**: [`agent/main.py`](agent/main.py#L249-L295)
@@ -238,6 +244,8 @@ The Next.js API route acts as a proxy to avoid CORS issues and centralize AI ser
 6. Response is proxied back to the learner
 
 #### 2. Quiz Answer Explanation After Completion
+
+<img width="1874" height="1043" alt="image" src="https://github.com/user-attachments/assets/8a63d08e-b97a-4026-9a3b-216b98c416aa" />
 
 After a learner completes a quiz, the AI service provides detailed explanations for each question, explaining why the correct answer is correct and why incorrect options are wrong. This transforms quizzes from assessment tools into learning opportunities.
 
@@ -292,6 +300,9 @@ The Next.js proxy validates input before forwarding:
 6. Explanations are displayed alongside quiz results in the UI
 
 #### 3. AI-Powered Quiz Generation (Multimodal)
+
+<img width="1920" height="897" alt="image" src="https://github.com/user-attachments/assets/bf11bc14-8319-41c8-8c91-10f7fe4a8400" />
+<img width="1875" height="1068" alt="image" src="https://github.com/user-attachments/assets/544c9473-e3bb-498c-89a7-5edf2b569774" />
 
 Instructors can generate entire quizzes automatically by providing course materials (documents, images, videos), number of questions, and difficulty level. The AI service analyzes all materials using Gemini's multimodal capabilities and generates contextually relevant questions.
 
@@ -433,6 +444,8 @@ The quiz builder includes an "AI Generate" button that:
 
 ### Role-Based Authentication
 
+<img width="1918" height="900" alt="image" src="https://github.com/user-attachments/assets/19f3a51f-a5f7-4f92-8264-15138e453950" />
+
 LearnSphere uses [NextAuth.js](https://next-auth.js.org/) for authentication with support for both credentials (email/password) and Google OAuth.
 
 **Implementation**: [`app/api/auth/[...nextauth]/route.ts`](app/api/auth/[...nextauth]/route.ts)
@@ -453,6 +466,8 @@ LearnSphere implements a comprehensive Role-Based Access Control (RBAC) system w
 
 **1. Admin Role (Super Admin)**
 
+<img width="1467" height="917" alt="admin" src="https://github.com/user-attachments/assets/35c17510-1486-419c-830a-a7bb1561d725" />
+
 Admins have the highest level of access and can manage the entire platform:
 
 - **Full Course Access**: Admins can view, edit, and manage ALL courses in the system, regardless of who created them or who is assigned as the course administrator ([`app/admin/courses/page.tsx`](app/admin/courses/page.tsx#L11-L14]).
@@ -472,6 +487,8 @@ Admins have the highest level of access and can manage the entire platform:
   - System-wide analytics
 
 **2. Instructor Role**
+
+<img width="1467" height="917" alt="instructor" src="https://github.com/user-attachments/assets/7c28906e-2370-4813-ad41-6f04e8cff67a" />
 
 Instructors have full access to courses they are assigned to, but cannot see or manage courses assigned to other instructors:
 
@@ -547,6 +564,8 @@ Learners have access to the public-facing side of the platform with enrollment a
 
 #### Content Types & Media Upload
 
+<img width="1326" height="800" alt="cttype" src="https://github.com/user-attachments/assets/76519f49-9862-4659-b11d-eb1747a598f2" />
+
 Courses support multiple content types:
 
 1. **Video Lessons**:
@@ -583,6 +602,8 @@ Courses support multiple content types:
 
 #### Quiz Creation & Management
 
+<img width="1470" height="921" alt="quizui" src="https://github.com/user-attachments/assets/0326ee34-22a1-47fa-9474-00c8f16c1c8a" />
+
 - **Quiz Builder**: Full-featured quiz editor with:
   - Question management (add, edit, delete, reorder)
   - Multiple choice questions with configurable correct answers
@@ -609,6 +630,8 @@ Courses support multiple content types:
 
 #### Email Services (Nodemailer)
 
+<img width="1292" height="855" alt="emailz" src="https://github.com/user-attachments/assets/c902757b-b152-4a23-9aa8-856b8a710d77" />
+
 - **Course Invitations**: Instructors/admins can invite learners via email. The system:
   - Generates unique invitation tokens
   - Sets 14-day expiration
@@ -631,6 +654,8 @@ Courses support multiple content types:
 
 #### Course Discovery & Enrollment
 
+<img width="1470" height="915" alt="discovery" src="https://github.com/user-attachments/assets/d9cfc6ca-c5ac-4859-bfb2-01425b2dd26b" />
+
 - **Public Course Catalog**: Browse all published courses with filtering by tags, search by title, and sorting options ([`app/(website)/courses/courses-client.tsx`](app/(website)/courses/courses-client.tsx))
 - **Course Detail Pages**: Rich course pages showing:
   - Full description, cover image, tags
@@ -644,6 +669,8 @@ Courses support multiple content types:
 - **Enrollment Flow**: One-click enrollment for open courses, invitation acceptance for restricted courses, and payment flow for paid courses ([`lib/actions.ts`](lib/actions.ts#L322-L369))
 
 #### My Courses Dashboard
+
+<img width="1470" height="915" alt="mycourses" src="https://github.com/user-attachments/assets/b51a5fff-7441-4d90-abcf-5e36bf3a5d92" />
 
 Learners have a personalized dashboard showing all enrolled courses with:
 
@@ -711,6 +738,8 @@ LearnSphere gamifies learning with a comprehensive points and badge system:
 
 #### Course Completion Tracking
 
+<img width="1470" height="915" alt="coursetracking" src="https://github.com/user-attachments/assets/6c01b736-db06-4297-beed-ac78af9b04d3" />
+
 - **Automatic Progress Updates**: Lesson completion automatically updates enrollment progress via database triggers:
   - `completed_lessons` count
   - `completion_percentage` calculation
@@ -725,6 +754,8 @@ LearnSphere gamifies learning with a comprehensive points and badge system:
 
 #### Course Reviews
 
+<img width="1470" height="915" alt="reviewssz" src="https://github.com/user-attachments/assets/80ff0e33-b3aa-4f78-bc1a-0af5748b2bb7" />
+
 Learners can submit reviews (1-5 stars) with optional text feedback after enrolling in a course. Reviews:
 - Are linked to enrollments (one review per enrollment)
 - Update course `average_rating` and `total_reviews_count` automatically via triggers
@@ -733,6 +764,8 @@ Learners can submit reviews (1-5 stars) with optional text feedback after enroll
 Implementation: [`lib/actions.ts`](lib/actions.ts#L551-L562), [`scripts/schema.sql`](scripts/schema.sql#L674-L705)
 
 #### Profile Management
+
+<img width="1470" height="915" alt="profilemanage" src="https://github.com/user-attachments/assets/dfcb9cbd-76c2-4efb-ac73-bf44b5047644" />
 
 Learners can manage their profile:
 - Edit first name and last name
@@ -751,6 +784,6 @@ Implementation: [`app/(website)/profile/profile-client.tsx`](app/(website)/profi
 
 ---
 
+## Conclusion
 
-
-
+LearnSphere is a production-ready LMS that brings together modern web stack (Next.js, PostgreSQL), real-time video mentoring (Daily.co), and AI-powered tools to support both instructors and learners. From course creation and quizzes to progress tracking, points, badges, and one-on-one sessions, the platform is built for scalability, clear data modeling, and a solid in-app experience. Whether used as a deployed demo or a base for further customization, LearnSphere demonstrates how to deliver a full-featured educational product with current best practices.
