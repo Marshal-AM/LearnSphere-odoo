@@ -78,7 +78,7 @@ export default function LessonPlayerClient({
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [quizScore, setQuizScore] = useState(0);
   const [questionResults, setQuestionResults] = useState<QuizQuestionResult[]>([]);
-  const [pointsPopup, setPointsPopup] = useState<{ show: boolean; points: number }>({ show: false, points: 0 });
+  const [pointsPopup, setPointsPopup] = useState<{ show: boolean; points: number; newTotal?: number }>({ show: false, points: 0 });
   const [showCourseComplete, setShowCourseComplete] = useState(false);
 
   // AI Assist state
@@ -116,7 +116,7 @@ export default function LessonPlayerClient({
           setQuestionResults(result.questionResults);
           setQuizCompleted(true);
           if (result.pointsEarned > 0) {
-            setPointsPopup({ show: true, points: result.pointsEarned });
+            setPointsPopup({ show: true, points: result.pointsEarned, newTotal: result.newTotalPoints });
           }
           router.refresh();
         });
@@ -684,14 +684,15 @@ export default function LessonPlayerClient({
           <p className="text-gray-500 mt-2">You have earned</p>
           <p className="text-4xl font-bold gradient-text my-3">+{pointsPopup.points} points</p>
           {(() => {
+            const totalForDisplay = pointsPopup.newTotal ?? user.total_points;
             const next = getNextBadge(user.current_badge);
             if (next) {
-              const pointsToNext = next.pointsNeeded - user.total_points;
+              const pointsToNext = next.pointsNeeded - totalForDisplay;
               return (
                 <div className="mt-4 p-4 bg-gray-50 rounded-2xl">
                   <p className="text-xs text-gray-500">Progress to next badge</p>
                   <p className="text-sm font-medium text-gray-700">{BADGE_LABELS[next.badge]} — {pointsToNext > 0 ? `${pointsToNext} more points needed` : 'Almost there!'}</p>
-                  <ProgressBar value={(user.total_points / next.pointsNeeded) * 100} size="sm" className="mt-2" />
+                  <ProgressBar value={(totalForDisplay / next.pointsNeeded) * 100} size="sm" className="mt-2" />
                 </div>
               );
             }

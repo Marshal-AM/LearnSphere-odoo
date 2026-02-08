@@ -403,6 +403,7 @@ export async function submitQuizAttempt(
   scorePercentage: number;
   passed: boolean;
   pointsEarned: number;
+  newTotalPoints: number;
   questionResults: QuizQuestionResult[];
 }> {
   const session = await getSession();
@@ -450,19 +451,57 @@ export async function submitQuizAttempt(
 
   const scorePercentage = questions.length > 0 ? (correctCount / questions.length) * 100 : 0;
 
-  // Get quiz passing percentage
-  const quiz = await queryOne<{ passing_percentage: number; course_id: string }>(
-    `SELECT passing_percentage, course_id FROM quizzes WHERE id = $1`,
+  // Get quiz passing percentage and point rewards
+  const quiz = await queryOne<{
+    passing_percentage: number;
+    course_id: string;
+    points_first_attempt: number;
+    points_second_attempt: number;
+    points_third_attempt: number;
+    points_fourth_plus_attempt: number;
+  }>(
+    `SELECT passing_percentage, course_id, points_first_attempt, points_second_attempt, points_third_attempt, points_fourth_plus_attempt FROM quizzes WHERE id = $1`,
     [quizId]
   );
   const passed = scorePercentage >= (quiz?.passing_percentage || 70);
 
-  // Create attempt — always mark as completed
-  const attempt = await queryOne<{ id: string; points_earned: number }>(
-    `INSERT INTO quiz_attempts (user_id, quiz_id, enrollment_id, attempt_number, total_questions, correct_answers, score_percentage, is_completed, passed, completed_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8, NOW())
-     RETURNING id, points_earned`,
-    [session.user.id, quizId, enrollmentId, attemptNumber, questions.length, correctCount, scorePercentage, passed]
+  // Award points based on attempt number (app-side; no DB trigger)
+  const pointsEarned =
+    attemptNumber === 1
+      ? (quiz?.points_first_attempt ?? 10)
+      : attemptNumber === 2
+        ? (quiz?.points_second_attempt ?? 7)
+        : attemptNumber === 3
+          ? (quiz?.points_third_attempt ?? 5)
+          : (quiz?.points_fourth_plus_attempt ?? 2);
+
+  // Create attempt — always mark as completed, with points_earned
+  const attempt = await queryOne<{ id: string }>(
+    `INSERT INTO quiz_attempts (user_id, quiz_id, enrollment_id, attempt_number, total_questions, correct_answers, score_percentage, points_earned, is_completed, passed, completed_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9, NOW())
+     RETURNING id`,
+    [session.user.id, quizId, enrollmentId, attemptNumber, questions.length, correctCount, scorePercentage, pointsEarned, passed]
+  );
+
+  // Update user total points and badge (app-side)
+  const updated = await queryOne<{ total_points: number }>(
+    `UPDATE users SET total_points = total_points + $1, updated_at = NOW() WHERE id = $2 RETURNING total_points`,
+    [pointsEarned, session.user.id]
+  );
+  const newTotal = updated?.total_points ?? 0;
+
+  // Record in points history
+  await query(
+    `INSERT INTO user_points_history (user_id, points_change, running_total, source_type, source_id, description, quiz_id)
+     VALUES ($1, $2, $3, 'quiz_completion', $4, $5, $6)`,
+    [
+      session.user.id,
+      pointsEarned,
+      newTotal,
+      attempt!.id,
+      `Earned ${pointsEarned} points for completing quiz (attempt ${attemptNumber})`,
+      quizId,
+    ]
   );
 
   // Insert individual answers
@@ -500,7 +539,8 @@ export async function submitQuizAttempt(
     totalQuestions: questions.length,
     scorePercentage,
     passed,
-    pointsEarned: attempt!.points_earned || 0,
+    pointsEarned,
+    newTotalPoints: newTotal,
     questionResults,
   };
 }
