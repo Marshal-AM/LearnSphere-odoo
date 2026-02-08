@@ -6,6 +6,10 @@ A comprehensive, modern e-learning platform built with Next.js 14+ and PostgreSQ
 
 Link : [View Here](https://learnsphere-orcin.vercel.app)
 
+### Demo Video:
+
+Link : [View Here](https://www.youtube.com/watch?v=9kn5J-l5wfQ)
+
 you can log in here as super admin with:
 - Email: `admin@learnsphere.com`
 - Password: `Admin123!`
