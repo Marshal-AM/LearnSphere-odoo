@@ -2,6 +2,16 @@
 
 A comprehensive, modern learning management system (LMS) built with Next.js 14+ and PostgreSQL, featuring real-time video sessions, AI-powered content generation, and a complete course management ecosystem.
 
+### Deployed live demo:
+
+Link : [View Here](https://learnsphere-orcin.vercel.app)
+
+you can log in here as super admin with:
+- Email: `admin@learnsphere.com`
+- Password: `Admin123!`
+
+and use your **Google Account** to login as an instructor or view course contents (publicly browsable).
+
 ## Introduction
 
 LearnSphere is a full-stack educational platform designed to bridge the gap between instructors and learners through innovative technology. The platform combines traditional course management with cutting-edge features like daily one-on-one video sessions, AI-powered quiz generation, and multimodal content analysis to create an engaging, personalized learning experience.
@@ -12,7 +22,7 @@ Built with performance and scalability in mind, LearnSphere leverages Next.js Ap
 
 - **Framework**: [Next.js 14+](https://nextjs.org/) (App Router, Server Components, Server Actions)
 - **Language**: TypeScript
-- **Database**: PostgreSQL (with connection pooling via `pg`)
+- **Database**: PostgreSQL (with connection pooling via `pg`, deployed on Railway)
 - **Authentication**: [NextAuth.js](https://next-auth.js.org/) (Credentials + Google OAuth)
 - **Styling**: Tailwind CSS with custom design system
 - **UI Components**: Custom component library with Radix UI primitives
@@ -411,7 +421,13 @@ The quiz builder includes an "AI Generate" button that:
 - `pydantic` - Data validation
 - `python-dotenv` - Environment variable management
 
-**Deployment**: The service can be deployed as a standalone FastAPI application using uvicorn ([`agent/main.py`](agent/main.py#L392-L394]) or containerized and deployed to cloud platforms like Google Cloud Run, AWS ECS, or Railway.
+**Deployment**: The service is **deployed to Google Cloud Run** using Docker containerization. The deployment setup includes:
+
+- **Dockerfile** ([`agent/Dockerfile`](agent/Dockerfile)): Uses Python 3.11 slim base image, installs dependencies from `requirements.txt`, and configures uvicorn to run on port 8080
+- **GitHub Actions CI/CD** ([`agent/google-cloudrun-docker.yml`](agent/google-cloudrun-docker.yml)): Automatically builds and deploys the container to Google Cloud Run on pushes to the main branch. The workflow:
+  - Authenticates to Google Cloud using service account credentials
+  - Builds the Docker container and pushes it to Google Artifact Registry
+  - Deploys the containerized service to Cloud Run in the `us-central1` region
 
 ## Features of the Application
 
@@ -428,6 +444,98 @@ LearnSphere uses [NextAuth.js](https://next-auth.js.org/) for authentication wit
 - **Session Management**: Custom session callbacks enrich the session with user data (points, badge, avatar) for client-side access ([`app/api/auth/[...nextauth]/route.ts`](app/api/auth/[...nextauth]/route.ts#L97-L110)).
 
 **Server-Side Authorization**: The `requireRole` helper function checks user roles server-side before allowing access to admin/instructor routes ([`lib/auth.ts`](lib/auth.ts)).
+
+### RBAC Implementation
+
+LearnSphere implements a comprehensive Role-Based Access Control (RBAC) system with three distinct roles: **Admin**, **Instructor**, and **Learner**. Each role has specific permissions and access levels that are enforced both at the database query level and in the UI.
+
+#### Role Hierarchy & Permissions
+
+**1. Admin Role (Super Admin)**
+
+Admins have the highest level of access and can manage the entire platform:
+
+- **Full Course Access**: Admins can view, edit, and manage ALL courses in the system, regardless of who created them or who is assigned as the course administrator ([`app/admin/courses/page.tsx`](app/admin/courses/page.tsx#L11-L14]).
+  
+  Implementation: The courses dashboard checks if the user has the `admin` role and calls `getAllCourses()` instead of `getInstructorCourses()` ([`app/admin/courses/page.tsx`](app/admin/courses/page.tsx#L13-L14]).
+
+- **Course Creation**: Only admins can create new courses. The "Create Course" button is conditionally rendered based on the `isAdmin` prop ([`app/admin/courses/courses-client.tsx`](app/admin/courses/courses-client.tsx#L164-L169]).
+
+- **Instructor Assignment**: Admins can assign instructors to courses via the "Course Admin" dropdown in the course form. This allows admins to delegate course management to specific instructors ([`app/admin/courses/[id]/course-form-client.tsx`](app/admin/courses/[id]/course-form-client.tsx#L607-L619]).
+  
+  Implementation: The course form checks `isAdmin` and conditionally renders either a `Select` dropdown (for admins) or read-only text (for instructors) ([`app/admin/courses/[id]/course-form-client.tsx`](app/admin/courses/[id]/course-form-client.tsx#L609-L626]).
+
+- **All Admin Features**: Admins have access to all admin dashboard features including:
+  - Reporting dashboard with all learner progress data
+  - Course management (create, edit, delete, publish)
+  - Instructor management
+  - System-wide analytics
+
+**2. Instructor Role**
+
+Instructors have full access to courses they are assigned to, but cannot see or manage courses assigned to other instructors:
+
+- **Assigned Course Access**: Instructors can only view and edit courses where they are the `course_admin_id`. The system enforces this at the page level by redirecting instructors who try to access courses they don't own ([`app/admin/courses/[id]/page.tsx`](app/admin/courses/[id]/page.tsx#L27-L30]):
+  ```typescript
+  // Instructors can only view courses they are admin of
+  if (!isAdmin && course.course_admin_id !== user.id) {
+    redirect('/admin/courses');
+  }
+  ```
+
+- **Course Dashboard Filtering**: The courses dashboard automatically filters to show only the instructor's assigned courses using `getInstructorCourses(userId)` ([`app/admin/courses/page.tsx`](app/admin/courses/page.tsx#L14]).
+  
+  Database Query: [`lib/queries.ts`](lib/queries.ts#L73-L85]) - The query filters courses where `course_admin_id = $1`.
+
+- **Full Course Management (Within Assigned Courses)**: For their assigned courses, instructors have complete control:
+  - Create and edit lessons (video, document, image, quiz)
+  - Build and manage quizzes
+  - Upload course materials (cover images, lesson content)
+  - Publish/unpublish courses
+  - Invite learners via email
+  - Contact enrolled learners
+  - View course analytics and learner progress
+
+- **No Course Creation**: Instructors cannot create new courses. The "Create Course" button is hidden for instructors ([`app/admin/courses/courses-client.tsx`](app/admin/courses/courses-client.tsx#L164-L169]).
+
+- **Read-Only Admin Assignment**: Instructors can see who is assigned as the course admin (themselves) but cannot change this assignment. The UI shows read-only text instead of a dropdown ([`app/admin/courses/[id]/course-form-client.tsx`](app/admin/courses/[id]/course-form-client.tsx#L617-L625]).
+
+**3. Learner Role**
+
+Learners have access to the public-facing side of the platform with enrollment and learning features:
+
+- **Course Discovery**: Browse all published courses in the public catalog ([`app/(website)/courses/page.tsx`](app/(website)/courses/page.tsx))
+- **Course Enrollment**: Enroll in courses based on access rules (open, invitation-only, or paid)
+- **Learning Experience**: Access enrolled courses, view lessons, complete quizzes, track progress
+- **Points & Badges**: Earn points by completing quizzes and unlock badge levels
+- **Reviews & Ratings**: Submit reviews and ratings for completed courses
+- **Profile Management**: Edit profile information and upload avatar
+- **Video Sessions**: Start one-on-one video meetings with course instructors when they are online
+
+- **No Admin Access**: Learners are redirected away from admin routes. The admin layout checks for `admin` or `instructor` roles and redirects learners to `/my-courses` ([`app/admin/layout.tsx`](app/admin/layout.tsx#L13-L15]):
+  ```typescript
+  if (!roles.some(r => r === 'admin' || r === 'instructor')) {
+    redirect('/my-courses');
+  }
+  ```
+
+#### Implementation Details
+
+**Role Storage**: Roles are stored as a PostgreSQL array (`user_role[]`) in the `users` table, allowing users to have multiple roles if needed ([`scripts/schema.sql`](scripts/schema.sql#L33]). The array is indexed with GIN for efficient role-based queries ([`scripts/schema.sql`](scripts/schema.sql#L49]).
+
+**Session Integration**: Roles are included in the NextAuth.js session via the JWT callback, which fetches roles from the database and includes them in the token ([`app/api/auth/[...nextauth]/route.ts`](app/api/auth/[...nextauth]/route.ts#L80-L95]). The session callback then makes roles available to client components ([`app/api/auth/[...nextauth]/route.ts`](app/api/auth/[...nextauth]/route.ts#L97-L110]).
+
+**Route Protection**: Admin routes are protected at the layout level. The admin layout checks for `admin` or `instructor` roles and redirects unauthorized users ([`app/admin/layout.tsx`](app/admin/layout.tsx#L6-L15]).
+
+**Course-Level Authorization**: Individual course pages check if the user is either an admin or the assigned course administrator before allowing access ([`app/admin/courses/[id]/page.tsx`](app/admin/courses/[id]/page.tsx#L27-L30]).
+
+#### Role Assignment Flow
+
+1. **Initial Registration**: Users can register as either a Learner or Instructor ([`app/(auth)/register/page.tsx`](app/(auth)/register/page.tsx)). The selected role is stored in the database during registration ([`lib/actions.ts`](lib/actions.ts#L675-L709]).
+
+2. **Google OAuth**: New Google OAuth users are redirected to `/choose-role` to select their initial role before accessing the platform ([`app/(auth)/choose-role/page.tsx`](app/(auth)/choose-role/page.tsx)). The role is then updated in the database via `updateUserRole` action ([`lib/actions.ts`](lib/actions.ts#L714-L722]).
+
+3. **Admin Assignment**: Admin roles are typically assigned directly in the database or through a seed script. The default admin account is created during database seeding ([`scripts/seed.sql`](scripts/seed.sql)).
 
 ### Admin & Instructor Course Management
 
@@ -464,7 +572,7 @@ Courses support multiple content types:
    - Linked to quiz entities
    - Automatic lesson creation when a quiz is created
 
-**S3 Storage Integration**: All media files are uploaded to S3-compatible storage (AWS S3, Cloudflare R2, DigitalOcean Spaces) via a public bucket configuration. The upload flow:
+**S3 Storage Integration**: All media files are uploaded to S3-compatible storage (AWS S3) via a public bucket configuration. The upload flow:
 
 1. Client uploads file to `/api/upload` ([`app/api/upload/route.ts`](app/api/upload/route.ts))
 2. Server generates a unique S3 key using `buildStorageKey` ([`lib/storage.ts`](lib/storage.ts#L76-L79))
@@ -643,90 +751,6 @@ Implementation: [`app/(website)/profile/profile-client.tsx`](app/(website)/profi
 
 ---
 
-## Getting Started
 
-### Prerequisites
 
-- Node.js 18+ and npm/yarn/pnpm
-- PostgreSQL 14+
-- S3-compatible storage account (AWS S3, Cloudflare R2, or DigitalOcean Spaces)
-- Daily.co account (for video sessions)
-- SMTP email account (Gmail, SendGrid, etc.)
-- AI service endpoint (optional, for AI features)
 
-### Installation
-
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd LearnSphere-odoo
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Set up environment variables (create `.env.local`):
-```env
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/learnsphere
-
-# NextAuth
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-secret-key
-
-# OAuth (Google)
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-
-# S3 Storage
-S3_REGION=us-east-1
-S3_ENDPOINT=https://your-endpoint.com
-S3_ACCESS_KEY_ID=your-access-key
-S3_SECRET_ACCESS_KEY=your-secret-key
-S3_BUCKET=learnsphere
-S3_PUBLIC_URL=https://your-public-cdn.com
-
-# Daily.co
-DAILY_API_KEY=your-daily-api-key
-
-# SMTP
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USERNAME=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-SMTP_FROM_EMAIL=noreply@learnsphere.com
-
-# AI Service (optional)
-AI_API_URL=https://your-ai-service.com
-```
-
-4. Run database migrations:
-```bash
-psql $DATABASE_URL < scripts/schema.sql
-psql $DATABASE_URL < scripts/seed.sql
-```
-
-5. Start the development server:
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) to see the application.
-
-### Default Admin Account
-
-After seeding, you can log in with:
-- Email: `admin@learnsphere.com`
-- Password: `Admin123!`
-
----
-
-## License
-
-[Your License Here]
-
-## Contributing
-
-[Contributing Guidelines Here]
